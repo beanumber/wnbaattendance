@@ -33,8 +33,8 @@ gamelogs <- gamelogs |>
   mutate(
     game_date = as.Date(GAME_DATE),
     win_flag = if_else(WL == "W", 1L, 0L),
-    isHome    = str_detect(MATCHUP, "vs"),
-    isAway    = str_detect(MATCHUP, "@"),
+    is_home    = str_detect(MATCHUP, "vs"),
+    is_away    = str_detect(MATCHUP, "@"),
     opponent = str_extract(MATCHUP, "[A-Z]{3}$")
   ) |>
   arrange(TEAM_ID, game_date)

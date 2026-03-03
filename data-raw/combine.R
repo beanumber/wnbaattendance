@@ -3,23 +3,32 @@ library(tidyverse)
 wnba_gamelogs <- read_rds(here::here("data/wnba_gamelogs.rds"))
 
 wnba_gamelogs_home <- wnba_gamelogs |>
-  mutate(
-    is_away = str_detect(MATCHUP, "@"),
-    game_date = as.Date(GAME_DATE)
-  ) |>
   filter(!is_away)
-
 
 # Add attendance to each game
 
-wnba_attendace <- read_csv(here::here("data/wnba_attendance.csv"))
+wnba_attendance <- read_csv(here::here("data/wnba_attendance.csv"))
 
 wnba_gl <- wnba_gamelogs_home |>
   left_join(
-    wnba_attendace |>
+    wnba_attendance |>
       select(game_date, Team, attendance), 
     by = join_by(game_date, TEAM_NAME == Team)
   )
+
+wnba_gl |>
+  group_by(SEASON_ID) |>
+  summarize(
+    na_attendance = sum(is.na(attendance)),
+    mean_attendance = mean(attendance, na.rm = TRUE)
+  ) |>
+  print(n = Inf)
+
+wnba_gl |>
+  filter(is.na(attendance)) |>
+  group_by(SEASON_ID, TEAM_ID) |>
+  count() |>
+  print(n = Inf)
 
 # Add Caitlin Clark indicator
 

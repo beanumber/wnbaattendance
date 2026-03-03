@@ -13,4 +13,9 @@ attendance_clean <- attendance_raw |>
     attendance = as.integer(Attendance)
   )
 
+attendance_clean |>
+  group_by(year(game_date)) |>
+  count() |>
+  print(n = Inf)
+
 write_csv(attendance_clean, "data/wnba_attendance.csv")

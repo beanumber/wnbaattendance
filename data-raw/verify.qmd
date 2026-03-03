@@ -17,13 +17,43 @@ wnba_gl |>
     num_teams = n_distinct(TEAM_ID),
     num_games = n(),
     num_wins = sum(win_flag, na.rm = TRUE),
-    mean_wpct = sum(win_flag, na.rm = TRUE) / n(),
+    mean_home_wpct = sum(win_flag, na.rm = TRUE) / n(),
     mean_rolling_wins = mean(rolling_wins_44),
     mean_attendance = mean(attendance, na.rm = TRUE),
     num_cc = sum(is_cc, na.rm = TRUE)
   ) |>
   print(n = Inf)
 ```
+
+```{r}
+teams <- wnba_gl |>
+  group_by(TEAM_ID) |>
+  summarize(
+    n = n(),
+    last_year = max(SEASON_ID),
+    names = paste(unique(TEAM_NAME), collapse = "|"),
+    current_name = last(TEAM_NAME)
+  ) |>
+  arrange(desc(n)) |>
+  mutate(is_active = last_year == 22024)
+```
+
+## Elo ratings
+
+```{r}
+library(elo)
+
+wnba_gl <- wnba_gl |>
+  mutate(vis_score = parse_number(PTS) - parse_number(PLUS_MINUS))
+
+elo <- elo.run(score(PTS, vis_score) ~ TEAM_ID + opponent, data = wnba_gl, k = 20) |>
+  as.data.frame()
+
+wnba_gl <- bind_cols(wnba_gl, select(elo, contains("elo")))
+```
+
+## Visualizations
+
 
 ```{r}
 ggplot(wnba_gl, aes(x = rolling_wins_44, color = SEASON_ID)) +
@@ -39,36 +69,28 @@ ggplot(wnba_gl, aes(x = rolling_wins_44)) +
 ```
 
 ```{r}
-ggplot(wnba_gl, aes(y = attendance, x = rolling_wins_44, color = is_cc)) +
+wnba_gl |>
+  right_join(teams |> filter(is_active), by = join_by(TEAM_ID)) |>
+ggplot(aes(y = attendance, x = rolling_wins_44, color = is_cc)) +
   geom_point() +
-  facet_wrap(vars(TEAM_NAME))
+  facet_wrap(vars(current_name))
 ```
 
 ```{r}
-ggplot(wnba_gl, aes(x = game_date, y = attendance, color = factor(is_cc))) +
+wnba_gl |>
+  right_join(teams |> filter(is_active), by = join_by(TEAM_ID)) |>
+ggplot(aes(x = game_date, y = attendance, color = factor(is_cc))) +
   geom_point() +
-  facet_wrap(vars(TEAM_ID))
+  facet_wrap(vars(current_name))
 ```
 
-## Elo ratings
 
 ```{r}
-library(elo)
-
-wnba_gl <- wnba_gl |>
-  mutate(opp_score = parse_number(PTS) - parse_number(PLUS_MINUS))
-
-elo <- elo.run(score(PTS, opp_score) ~ TEAM_ID + opponent, data = wnba_gl, k = 20) |>
-  as.data.frame()
-
-wnba_gl <- bind_cols(wnba_gl, select(elo, contains("elo")))
-
-```
-
-```{r}
-ggplot(wnba_gl, aes(x = game_date, y = elo.A, color = factor(is_cc))) +
+wnba_gl |>
+  right_join(teams |> filter(is_active), by = join_by(TEAM_ID)) |>
+ggplot(aes(x = game_date, y = elo.A, color = factor(is_cc))) +
   geom_point() +
-  facet_wrap(vars(TEAM_ID))
+  facet_wrap(vars(current_name))
 ```
 
 
@@ -76,9 +98,11 @@ ggplot(wnba_gl, aes(x = game_date, y = elo.A, color = factor(is_cc))) +
 wnba_gl |>
   summarize(cor = cor(elo.A, rolling_wins_44))
 
-ggplot(wnba_gl, aes(x = rolling_wins_44, y = elo.A)) +
+wnba_gl |>
+  right_join(teams |> filter(is_active), by = join_by(TEAM_ID)) |>
+ggplot(aes(x = rolling_wins_44, y = elo.A)) +
   geom_point() +
-  facet_wrap(vars(TEAM_ID))
+  facet_wrap(vars(current_name))
 ```
 
 
