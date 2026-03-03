@@ -112,7 +112,7 @@ ggplot(aes(x = rolling_wins_44, y = elo.A)) +
 # Consider this alternative model specification
 mod_attendance <- lm(
   log(attendance + 1) ~ elo.A + elo.B + factor(wday(GAME_DATE)) + factor(month(GAME_DATE)) + TEAM_ID + SEASON_ID + is_cc,
-  data = filter(wnba_gl, !SEASON_ID %in% c(22021))
+  data = filter(right_join(wnba_gl, teams |> filter(is_active), by = join_by(TEAM_ID)), !SEASON_ID %in% c(22021))
 )
 
 summary(mod_attendance)
