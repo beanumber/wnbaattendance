@@ -6,7 +6,7 @@ library(wehoop)
 
 # 1. Pull league-wide gamelogs from wehoop
 
-seasons <- 1997:2024
+seasons <- 1997:2025
 
 fetch_gamelog_season <- function(s) {
   res <- tryCatch(
@@ -30,18 +30,19 @@ gamelogs <- gamelogs_raw$LeagueGameLog
 
 # 2. clean gamelogs
 gamelogs <- gamelogs |>
+  janitor::clean_names() |>
   mutate(
-    game_date = as.Date(GAME_DATE),
-    win_flag = if_else(WL == "W", 1L, 0L),
-    is_home    = str_detect(MATCHUP, "vs"),
-    is_away    = str_detect(MATCHUP, "@"),
-    opponent = str_extract(MATCHUP, "[A-Z]{3}$")
+    game_date = as.Date(game_date),
+    win_flag = if_else(wl == "W", 1L, 0L),
+    is_home    = str_detect(matchup, "vs"),
+    is_away    = str_detect(matchup, "@"),
+    opponent = str_extract(matchup, "[A-Z]{3}$")
   ) |>
-  arrange(TEAM_ID, game_date)
+  arrange(team_id, game_date)
 
 # 3. rolling win counts for 44 past games (length of a wnba season)
 wnba_gamelogs <- gamelogs |>
-  group_by(TEAM_ID) |>
+  group_by(team_id) |>
   mutate(
     # rolling window of PREVIOUS 44 games, so exclude current game
     rolling_wins_44 =

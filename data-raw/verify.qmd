@@ -12,7 +12,7 @@ wnba_gl <- read_rds(here::here("data/wnba_gl.rds"))
 
 ```{r}
 wnba_gl |>
-  group_by(SEASON_ID) |>
+  group_by(season_id) |>
   summarize(
     num_teams = n_distinct(TEAM_ID),
     num_games = n(),
@@ -23,31 +23,6 @@ wnba_gl |>
     num_cc = sum(is_cc, na.rm = TRUE)
   ) |>
   print(n = Inf)
-```
-
-```{r}
-ggplot(wnba_gl, aes(x = rolling_wins_44, color = SEASON_ID)) +
-  geom_vline(xintercept = 22, linetype = 3) +
-  geom_density()
-```
-
-```{r}
-ggplot(wnba_gl, aes(x = rolling_wins_44)) +
-  geom_vline(xintercept = 22, linetype = 3) +
-  geom_density() +
-  facet_wrap(vars(TEAM_ID))
-```
-
-```{r}
-ggplot(wnba_gl, aes(y = attendance, x = rolling_wins_44, color = is_cc)) +
-  geom_point() +
-  facet_wrap(vars(TEAM_NAME))
-```
-
-```{r}
-ggplot(wnba_gl, aes(x = game_date, y = attendance, color = factor(is_cc))) +
-  geom_point() +
-  facet_wrap(vars(TEAM_ID))
 ```
 
 ## Elo ratings
@@ -62,13 +37,59 @@ elo <- elo.run(score(PTS, opp_score) ~ TEAM_ID + opponent, data = wnba_gl, k = 2
   as.data.frame()
 
 wnba_gl <- bind_cols(wnba_gl, select(elo, contains("elo")))
+```
 
+## Active franchises
+
+```{r}
+franchises <- wnba_gl |>
+  group_by(TEAM_ID) |>
+  summarize(
+    num_games = n(),
+    team_names = paste(unique(TEAM_NAME), collapse = "|"),
+    season_first = min(season_id),
+    season_last = max(season_id),
+    name_current = last(TEAM_NAME)
+  )
+
+active_teams <- franchises |>
+  filter(season_last == 2024)
+
+wnba_gl_active <- wnba_gl |>
+  right_join(active_teams, by = join_by(TEAM_ID))
+```
+
+
+
+```{r}
+ggplot(wnba_gl_active, aes(x = rolling_wins_44, color = SEASON_ID)) +
+  geom_vline(xintercept = 22, linetype = 3) +
+  geom_density()
 ```
 
 ```{r}
-ggplot(wnba_gl, aes(x = game_date, y = elo.A, color = factor(is_cc))) +
+ggplot(wnba_gl_active, aes(x = rolling_wins_44)) +
+  geom_vline(xintercept = 22, linetype = 3) +
+  geom_density() +
+  facet_wrap(vars(name_current))
+```
+
+```{r}
+ggplot(wnba_gl_active, aes(y = attendance, x = rolling_wins_44, color = is_cc)) +
   geom_point() +
-  facet_wrap(vars(TEAM_ID))
+  facet_wrap(vars(name_current))
+```
+
+```{r}
+ggplot(wnba_gl_active, aes(x = game_date, y = attendance, color = factor(is_cc))) +
+  geom_point() +
+  facet_wrap(vars(name_current))
+```
+
+```{r}
+ggplot(wnba_gl_active, aes(x = game_date, y = elo.A, color = factor(is_cc))) +
+  geom_point() +
+  facet_wrap(vars(name_current))
 ```
 
 
@@ -79,6 +100,11 @@ wnba_gl |>
 ggplot(wnba_gl, aes(x = rolling_wins_44, y = elo.A)) +
   geom_point() +
   facet_wrap(vars(TEAM_ID))
+
+ggplot(wnba_gl_active, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
+  geom_point() +
+  facet_wrap(vars(name_current))
+
 ```
 
 
@@ -87,13 +113,14 @@ ggplot(wnba_gl, aes(x = rolling_wins_44, y = elo.A)) +
 ```{r}
 # Consider this alternative model specification
 mod_attendance <- lm(
-  log(attendance + 1) ~ elo.A + elo.B + factor(wday(GAME_DATE)) + factor(month(GAME_DATE)) + TEAM_ID + SEASON_ID + is_cc,
-  data = filter(wnba_gl, !SEASON_ID %in% c(22021))
+  log(attendance + 1) ~ elo.A + elo.B + factor(wday(GAME_DATE)) + factor(month(GAME_DATE)) + name_current + season_id + is_cc,
+  data = filter(wnba_gl_active, !season_id %in% c(2021))
 )
 
 summary(mod_attendance)
 anova(mod_attendance)
 
+plot(mod_attendance)
 ```
 
 
