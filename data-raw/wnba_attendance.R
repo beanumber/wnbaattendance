@@ -13,4 +13,4 @@ attendance_clean <- attendance_raw |>
     attendance = as.integer(Attendance)
   )
 
-write_csv(attendance_clean, "data/wnba_attendance.csv")
+write_rds(attendance_clean, file = "data/wnba_attendance.rds", compress = "xz")
