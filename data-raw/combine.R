@@ -17,7 +17,7 @@ wnba_attendace <- read_csv(here::here("data/wnba_attendance.csv"))
 wnba_gl <- wnba_gamelogs_home |>
   left_join(
     wnba_attendace |>
-      select(game_date, Team, attendance), 
+      select(game_date, Team, attendance, Arena), 
     by = join_by(game_date, TEAM_NAME == Team)
   )
 
@@ -32,8 +32,12 @@ wnba_gl <- wnba_gl |>
   ) |>
   mutate(is_cc = if_else(is.na(is_cc), 0, is_cc))
 
+# Add arena capacity
 
+arena_capacity <-read_rds(here::here("data/arena_capacity.rds"))
 
+wnba_gl <- wnba_gl |>
+  left_join(arena_capacity, by = c("Arena" = "arena_name"))
 
 
 
