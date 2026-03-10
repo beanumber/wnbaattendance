@@ -9,7 +9,7 @@ wnba_attendance <- read_rds(here::here("data/wnba_attendance.rds"))
 wnba_gl <- wnba_gl_elo |>
   left_join(
     wnba_attendance |>
-      select(game_date, team, attendance), 
+      select(game_date, team, attendance, arena, arena_capacity), 
     by = join_by(game_date, team_name == team)
   )
 
@@ -44,9 +44,6 @@ wnba_gl <- wnba_gl |>
     by = join_by(game_id)
   ) |>
   mutate(is_cc = if_else(is.na(is_cc), 0, is_cc))
-
-
-
 
 
 

@@ -42,6 +42,12 @@ ggplot(wnba_gl, aes(x = max_elo, y = attendance, color = factor(is_cc))) +
   facet_wrap(vars(season_id))
 ```
 
+```{r}
+ggplot(wnba_gl, aes(x = max_elo, y = attendance / arena_capacity, color = factor(is_cc))) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  facet_wrap(vars(season_id))
+```
 
 
 ```{r}
