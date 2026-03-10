@@ -8,22 +8,8 @@ library(wehoop)
 
 seasons <- 1997:2025
 
-fetch_gamelog_season <- function(s) {
-  res <- tryCatch(
-    wnba_leaguegamelog(season = s, season_type = "Regular Season", league_id = "10"),
-    error = function(e) {
-      message(sprintf("wnba_leaguegamelog failed for season %s: %s", s, e$message))
-      return(NULL)
-    }
-  )
-  if (is.null(res)) return(NULL)
-  
-  as_tibble(res) |> 
-    mutate(season = s)
-}
-
 gamelogs_raw <- seasons |>
-  map(fetch_gamelog_season) |>
+  map(~(wehoop::wnba_leaguegamelog(season = .x, season_type = "Regular Season", league_id = "10"))) |>
   bind_rows()
 
 gamelogs <- gamelogs_raw$LeagueGameLog
@@ -33,6 +19,7 @@ gamelogs <- gamelogs |>
   janitor::clean_names() |>
   mutate(
     game_date = as.Date(game_date),
+    season_id = parse_number(season_id) - 20000,
     win_flag = if_else(wl == "W", 1L, 0L),
     is_home    = str_detect(matchup, "vs"),
     is_away    = str_detect(matchup, "@"),
