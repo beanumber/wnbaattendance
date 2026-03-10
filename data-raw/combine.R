@@ -1,16 +1,12 @@
 library(tidyverse)
 
-wnba_gamelogs <- read_rds(here::here("data/wnba_gamelogs.rds"))
-
-wnba_gamelogs_home <- wnba_gamelogs |>
-  filter(!is_away)
-
+wnba_gl_elo <- read_rds(here::here("data/wnba_gl_elo.rds"))
 
 # Add attendance to each game
 
 wnba_attendance <- read_rds(here::here("data/wnba_attendance.rds"))
 
-wnba_gl <- wnba_gamelogs_home |>
+wnba_gl <- wnba_gl_elo |>
   left_join(
     wnba_attendance |>
       select(game_date, team, attendance), 

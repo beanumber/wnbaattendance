@@ -27,30 +27,5 @@ gamelogs <- gamelogs |>
   ) |>
   arrange(team_id, game_date)
 
-# 3. rolling win counts for 44 past games (length of a wnba season)
-wnba_gamelogs <- gamelogs |>
-  group_by(team_id) |>
-  mutate(
-    # rolling window of PREVIOUS 44 games, so exclude current game
-    rolling_wins_44 =
-      slider::slide_int(
-        win_flag,
-        ~ sum(.x, na.rm = TRUE),
-        .before = 44,
-        .after = -1,      # exclude current game
-        .complete = FALSE
-      ),
-    
-    rolling_games_44 =
-      slider::slide_int(
-        win_flag,
-        ~ length(.x),
-        .before = 44,
-        .after = -1,
-        .complete = FALSE
-      )
-  ) |>
-  ungroup()
-
 
 write_rds(wnba_gamelogs, file = "data/wnba_gamelogs.rds", compress = "xz")
