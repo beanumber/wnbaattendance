@@ -37,6 +37,17 @@ ggplot(wnba_gl, aes(x = elo.A, y = elo.B, color = attendance)) +
 ```
 
 ```{r}
+ggplot(wnba_gl, aes(x = factor(season_id), y = log(attendance), color = factor(is_cc))) +
+  geom_boxplot(outlier.alpha = 0.2, linewidth = 0.6, fill = "grey90") +
+  geom_jitter(alpha = 0.2, width = 0.15, size = 1) +
+  labs(
+    title = "Distribution of WNBA Game Attendance by Season",
+    x = "Season",
+    y = "Attendance"
+  )
+```
+
+```{r}
 ggplot(wnba_gl, aes(x = max_elo, y = attendance, color = factor(is_cc))) +
   geom_point() +
   geom_smooth(method = "lm") + 
@@ -103,7 +114,8 @@ ggplot(wnba_gl, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
 ```{r}
 # Consider this alternative model specification
 mod_attendance <- lm(
-  log(attendance + 1) ~ home_win_prob + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc,
+  log(attendance) ~ log(arena_capacity) + (season_id > 2020) * (elo.B + home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc,
+#  data = filter(wnba_gl, season_id > 2021, is_active)
   data = filter(wnba_gl, !season_id %in% c(2021), is_active)
 )
 
