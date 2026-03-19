@@ -6,6 +6,7 @@ format: html
 ## Gamelogs
 
 ```{r}
+#| message: false
 library(tidyverse)
 wnba_gl <- read_rds(here::here("data/wnba_gl.rds"))
 ```
@@ -102,7 +103,7 @@ ggplot(wnba_gl, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
 ```{r}
 # Consider this alternative model specification
 mod_attendance <- lm(
-  log(attendance + 1) ~ home_win_prob + factor(wday(game_date)) + factor(month(game_date)) + name_current + season_id + is_cc,
+  log(attendance + 1) ~ home_win_prob + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc,
   data = filter(wnba_gl, !season_id %in% c(2021), is_active)
 )
 
