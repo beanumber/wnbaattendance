@@ -114,7 +114,7 @@ ggplot(wnba_gl, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
 ```{r}
 # Consider this alternative model specification
 mod_attendance <- lm(
-  log(attendance) ~ log(arena_capacity) + (season_id > 2020) * (elo.B + home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc,
+  log(attendance) ~ log(arena_capacity) + (season_id > 2020) * (elo.B + home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc + median_income + median_pop,
 #  data = filter(wnba_gl, season_id > 2021, is_active)
   data = filter(wnba_gl, !season_id %in% c(2021), is_active)
 )
