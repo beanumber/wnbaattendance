@@ -105,4 +105,12 @@ anova(mod_attendance)
 
 ```
 
+```{r}
+attendance_model <- lm(
+  attendance ~ rolling_wins_44 + factor(wday(GAME_DATE)) + factor(month(GAME_DATE)) + TEAM_ID + SEASON_ID + is_cc + arena_capacity,
+  data = filter(wnba_gl, !SEASON_ID %in% c(22021))
+)
+
+summary(attendance_model)
+```
 
