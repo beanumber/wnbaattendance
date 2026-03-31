@@ -108,11 +108,24 @@ ggplot(wnba_gl, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
 
 ```
 
+```{r}
+ggplot(wnba_gl, aes(x = home_win_prob, y = log(attendance), color = factor(is_cc))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(season_id))
+```
+
 
 ## Modeling
 
 ```{r}
 # Consider this alternative model specification
+
+# 1997, 2002
+# 2003, 2009,
+# 2010, 2014,
+# 2015, 2019, 
+# 2022, 2025
 
 wnba_gl_reg <- wnba_gl |>
   mutate(period = cut(season_id, breaks = 6)) |>
@@ -120,7 +133,7 @@ wnba_gl_reg <- wnba_gl |>
 
 
 mod_attendance <- lm(
-  log(attendance) ~ log(arena_capacity) + factor(period) * (home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income + median_pop,
+  log(attendance) ~ log(arena_capacity) + factor(season_id) * (home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income + median_pop,
   data = wnba_gl_reg
 )
 
@@ -130,4 +143,18 @@ anova(mod_attendance)
 # plot(mod_attendance)
 ```
 
+```{r}
+mod_attendance |>
+  broom::tidy() |>
+  filter(str_detect(term, "season_id")) |>
+  mutate(
+    season_id = parse_number(term),
+    slope = str_extract(term, "\\:.+$")
+  ) |>
+  ggplot(aes(x = season_id, y = estimate)) +
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(vars(slope))
+
+```
 
