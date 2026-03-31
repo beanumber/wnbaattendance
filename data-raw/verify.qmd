@@ -121,3 +121,73 @@ attendance_model <- lm(
 summary(attendance_model)
 ```
 
+## determining period definitions
+
+```{r}
+continuous_model <- lm(
+  log(attendance + 1) ~
+    (home_win_prob + elo.B)*as.factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + team_id + is_cc + arena_capacity,
+  data = filter(wnba_gl, !season_id %in% c(2021), is_active)
+)
+
+summary(continuous_model)
+```
+```{r}
+wnba_gl <- wnba_gl|>
+  mutate(period = case_when(
+  season_id <= 2002 ~ "97-02",
+  season_id <= 2009 ~ "03-09",
+  season_id <= 2014 ~ "10-14",
+  season_id <= 2019 ~ "15-19",
+  TRUE ~ "modern"
+))
+
+period_model <- lm(
+  log(attendance + 1) ~
+    (home_win_prob + elo.B)*period + factor(wday(game_date)) + factor(month(game_date)) + team_id + is_cc + arena_capacity + season_id,
+  data = filter(wnba_gl, !season_id %in% c(2021), is_active)
+)
+
+summary(period_model)
+```
+```{r}
+continuous_model_simple <- lm(
+  attendance ~
+    (home_win_prob + elo.B)*as.factor(season_id),
+  data = wnba_gl
+)
+
+library(tidyverse)
+
+pred_data <- expand_grid(
+  home_win_prob = seq(0.2, 0.8, length.out = 100),
+  season_id = sort(unique(wnba_gl$season_id)),
+  elo.B = mean(wnba_gl$elo.B, na.rm = TRUE)  
+)
+
+pred_data <- pred_data |>
+  filter(!season_id %in% c(2020, 2021))|>
+  mutate(
+    season_id = factor(season_id),
+    pred_log_attendance = predict(continuous_model_simple, newdata = cur_data())
+  )
+
+ggplot(pred_data, aes(
+  x = home_win_prob,
+  y = pred_log_attendance,
+  group = season_id,
+  color = season_id
+)) +
+  geom_line(alpha = 0.7) +
+  labs(
+    x = "Home Win Probability",
+    y = "Predicted log(Attendance + 1)",
+    color = "Season",
+    title = "Changing Effect of Team Strength on Attendance Over Time"
+  ) +
+  facet_wrap(~ season_id, ncol = 5) +
+  theme_minimal()
+```
+
+
+- the first wnba teams to fold were the miami sol and the portland fire (2003)
