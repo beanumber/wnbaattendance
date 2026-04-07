@@ -144,7 +144,7 @@ wnba_gl <- wnba_gl|>
 
 period_model <- lm(
   log(attendance + 1) ~
-    (home_win_prob + elo.B)*period + factor(wday(game_date)) + factor(month(game_date)) + team_id + is_cc + arena_capacity + season_id,
+    (home_win_prob + elo.B)*period + factor(wday(game_date)) + factor(month(game_date)) + team_id + is_cc + arena_capacity,
   data = filter(wnba_gl, !season_id %in% c(2021), is_active)
 )
 
@@ -184,10 +184,47 @@ ggplot(pred_data, aes(
     y = "Predicted log(Attendance + 1)",
     color = "Season",
     title = "Changing Effect of Team Strength on Attendance Over Time"
-  ) +
-  facet_wrap(~ season_id, ncol = 5) +
+  )  +
   theme_minimal()
 ```
 
+
+
+```{r}
+library(marginaleffects)
+
+valid_seasons <- sort(unique(wnba_gl$season_id[!wnba_gl$season_id %in% c(2020, 2021)]))
+
+
+slopes_data <- slopes(
+  continuous_model,
+  variables = c("home_win_prob", "elo.B"),
+  newdata = datagrid(season_id = valid_seasons)
+)
+
+slopes_data <- as.data.frame(slopes_data)
+
+#slopes_data <- slopes_data |>
+#  mutate(
+#    term = recode(term,
+#                      "home_win_prob" = "Home Win Probability",
+#                      "elo.B" = "Opponent's Elo Rating")
+#  )|
+
+ggplot(slopes_data, aes(x = season_id, y = estimate, color = term, fill = term, group = term)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  facet_wrap(~ term, scales = "free_y", ncol = 1) +
+  labs(
+    x = "Season",
+    y = "Marginal Effect on log(Attendance+1)",
+    color = "Team Strength Measure",
+    fill = "Team Strength Measure",
+    title = "How the Impact of Team Strength on Attendance Changes by Season"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
 - the first wnba teams to fold were the miami sol and the portland fire (2003)
