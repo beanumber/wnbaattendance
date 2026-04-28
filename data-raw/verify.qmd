@@ -6,6 +6,7 @@ format: html
 ## Gamelogs
 
 ```{r}
+#| message: false
 library(tidyverse)
 wnba_gl <- read_rds(here::here("data/wnba_gl.rds"))
 ```
@@ -33,6 +34,17 @@ wnba_gl |>
 ```{r}
 ggplot(wnba_gl, aes(x = elo.A, y = elo.B, color = attendance)) +
   geom_point()
+```
+
+```{r}
+ggplot(wnba_gl, aes(x = factor(season_id), y = log(attendance), color = factor(is_cc))) +
+  geom_boxplot(outlier.alpha = 0.2, linewidth = 0.6, fill = "grey90") +
+  geom_jitter(alpha = 0.2, width = 0.15, size = 1) +
+  labs(
+    title = "Distribution of WNBA Game Attendance by Season",
+    x = "Season",
+    y = "Attendance"
+  )
 ```
 
 ```{r}
@@ -96,14 +108,33 @@ ggplot(wnba_gl, aes(x = elo.A, y = attendance, color = factor(is_cc))) +
 
 ```
 
+```{r}
+ggplot(wnba_gl, aes(x = home_win_prob, y = log(attendance), color = factor(is_cc))) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(vars(season_id))
+```
+
 
 ## Modeling
 
 ```{r}
 # Consider this alternative model specification
+
+# 1997, 2002
+# 2003, 2009,
+# 2010, 2014,
+# 2015, 2019, 
+# 2022, 2025
+
+wnba_gl_reg <- wnba_gl |>
+  mutate(period = cut(season_id, breaks = 6)) |>
+  filter(!season_id %in% c(2021), is_active)
+
+
 mod_attendance <- lm(
-  log(attendance + 1) ~ home_win_prob + factor(wday(game_date)) + factor(month(game_date)) + name_current + season_id + is_cc,
-  data = filter(wnba_gl, !season_id %in% c(2021), is_active)
+  log(attendance) ~ log(arena_capacity) + factor(season_id) * (home_win_prob) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income + median_pop,
+  data = wnba_gl_reg
 )
 
 summary(mod_attendance)
@@ -113,10 +144,109 @@ anova(mod_attendance)
 ```
 
 ```{r}
+wnba_gl_reg <- wnba_gl |>
+  ungroup() |>
+  mutate(
+    period = cut(season_id, breaks = 6),
+    arena_type = cut(arena_capacity, breaks = c(0, 5000, 15000, 25000))
+  ) |>
+  filter(!season_id %in% c(2021), is_active) |>
+  group_by(arena) |>
+  mutate(pct_capacity = attendance / max(attendance))
+
+ggplot(wnba_gl_reg, aes(x = arena_capacity, y = pct_capacity, color = factor(is_cc))) +
+  geom_point() +
+  facet_wrap(vars(arena_type))
+
+ggplot(wnba_gl_reg, aes(x = arena_capacity)) +
+  geom_histogram()
+
+mod_attendance <- glm(
+  pct_capacity ~ home_win_prob * factor(arena_type) + factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop,
+  data = wnba_gl_reg, 
+  family = binomial
+)
+
+summary(mod_attendance)
+anova(mod_attendance)
+```
+
+```{r}
+mod_attend <- lm(log(attendance) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, data = wnba_gl_reg)
+
+summary(mod_attend)
+```
+
+
+
+```{r}
+library(VGAM)
+x <- wnba_gl_reg |>
+  filter(!is.na(arena_capacity))
+
+games_by_arena_size <- wnba_gl_reg |>
+  group_by(arena_type)
+
+games_by_arena_size |>
+  summarize(mean(attendance))
+
+gl_pieces <- games_by_arena_size |>
+  group_split()
+
+mod_tobit_small <- vglm(log(attendance + 1) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(5000), imethod = 2), data = gl_pieces[[1]])
+
+mod_tobit_medium <- vglm(log(attendance) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(15000)), data = gl_pieces[[2]])
+
+mod_tobit_large <- vglm(log(attendance) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(22000)), data = gl_pieces[[3]])
+
+summary(mod_tobit)
+exp(-1.079e+00)
+
+
+
+
+mod_tobit <- vglm(pct_capacity ~ elo.A + elo.B + home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Lower = 0, Upper = 1, imethod = 2), data = wnba_gl_reg)
+summary(mod_tobit)
+
+r <- residuals(mod_tobit, type = "response")[, 1]
+sqrt(mean(r^2))
+y_hat <- fitted.values(mod_tobit)[, 1]
+
+plot(y = r, x = y_hat)
+```
+
+```{r}
+control_vars <- "factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income + median_pop"
+mods <- list(
+  attend = formula(paste("log(attendance) ~ log(arena_capacity) + factor(season_id) * (home_win_prob) + ", control_vars))
+)
+
+
+```
+
+
+
+```{r}
+mod_attendance |>
+  broom::tidy() |>
+  filter(str_detect(term, "season_id")) |>
+  mutate(
+    season_id = parse_number(term),
+    slope = str_extract(term, "\\:.+$")
+  ) |>
+  ggplot(aes(x = season_id, y = estimate)) +
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(vars(slope))
+```
+
+
+```{r}
 attendance_model <- lm(
   attendance ~ rolling_wins_44 + factor(wday(GAME_DATE)) + factor(month(GAME_DATE)) + TEAM_ID + SEASON_ID + is_cc + arena_capacity,
   data = filter(wnba_gl, !SEASON_ID %in% c(22021))
 )
+
 
 summary(attendance_model)
 ```

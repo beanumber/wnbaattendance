@@ -24,16 +24,12 @@ number-sections: true
 ```{r}
 #| message: false
 library(tidyverse)
-library(modelsummary)
 library(knitr)
 library(gt)
 ```
 
 ```{r}
-#reading in cleaned data:
-wnba_attendance <- read_csv(here::here("data/wnba_attendance.csv"))
 wnba_gl <- read_rds(here::here("data/wnba_gl.rds"))
-full_data <- read_csv("clean_data/full_data.csv")
 ```
 
 ## Introduction
@@ -61,26 +57,20 @@ We also rely on the wehoop R packages API call to access league wide game-logs t
 #| label: tbl-attendance
 #| fig-cap: "Example of Attendance Data from 2025 Regular Season."
 
-wnba_attendance |>
+wnba_gl |>
   select(
-    Date,
-    Team,
-    Opponent,
-    Arena,
-    City,
-    State,
-    Attendance
+    game_date,
+    team_name,
+    opponent,
+    arena,
+    attendance
   ) |>
-  filter(Team == "Atlanta Dream") |>
-  head(10) |> # show first 10 rows (adjust as needed)
+  slice_sample(n = 10) |>
+  janitor::clean_names(case = "title") |>
   gt() |>
   tab_header(
     title = "WNBA Game Attendance (2025 Season)",
     subtitle = "Sample of game-level attendance records"
-  ) |>
-  cols_label(
-    Date = "Game Date",
-    Team = "Home Team",
   ) |>
   fmt_number(
     columns = Attendance,
@@ -99,7 +89,7 @@ wnba_attendance |>
 #| label: fig-boxplots
 #| fig-cap: "Distribution of WNBA game attendance by season"
 # Distribution of WNBA game attendance by season
-ggplot(wnba_attendance, aes(x = factor(Season), y = attendance)) +
+ggplot(wnba_gl, aes(x = factor(season_id), y = attendance)) +
   geom_boxplot(outlier.alpha = 0.2, linewidth = 0.6, fill = "grey90") +
   geom_jitter(alpha = 0.15, width = 0.15, size = 1) +
   labs(
@@ -123,38 +113,22 @@ Utilizing the framework of Scully's 1974 paper into pay and performance in the M
 ```{r}
 #| label: tbl-model
 #| tbl-cap: "Regression results for attendance model"
-attendance_model <- lm(
-  attendance ~ rolling_wins_44 + dow + month + team_name + Season + caitlin_clark_game,
-  data = full_data
+mod_attendance <- lm(
+  log(attendance + 1) ~ home_win_prob + factor(wday(game_date)) + factor(month(game_date)) + name_current + factor(season_id) + is_cc,
+  data = filter(wnba_gl, !season_id %in% c(2021), is_active)
 )
 
 models <- list(
-  "OLS Model" = attendance_model
+  "OLS Model" = mod_attendance
 )
 
-modelsummary(
+modelsummary::modelsummary(
   models,
-  shape = model ~ term,
+#  shape = model ~ term,
   output = "gt",
   statistic = "({std.error})",
   stars = TRUE,
-  gof_omit = "IC|Log|Adj|Pseudo",
-  coef_map = c(
-    "(Intercept)"     = "Intercept",
-    "rolling_wins_44" = "Rolling Wins (44 games)",
-    "caitlin_clark_game" = "Caitlin Clark",
-    "team_nameCHICAGO SKY" = "Chicago Sky",
-    "team_nameCONNECTICUT SUN" = "Connecticut Sun",
-    "team_nameDALLAS WINGS" = "Dallas Wings",
-    "team_nameINDIANA FEVER" = "Indiana Fever",
-    "team_nameLAS VEGAS ACES" = "Las Vegas Aces",
-    "team_nameLOS ANGELES SPARKS" = "Los Angeles Sparks",
-    "team_nameMINNESOTA LYNX" = "Minnesota Lynx",
-    "team_nameNEW YORK LIBERTY" = "New York Liberty",
-    "team_namePHOENIX MERCURY" = "Phoenix Mercury",
-    "team_nameSEATTLE STORM" = "Seattle Storm",
-    "team_nameWASHINGTON MYSTICS" = "Washington Mystics"
-  )
+  gof_omit = "IC|Log|Adj|Pseudo"
 )
 ```
 
@@ -165,23 +139,14 @@ The model's incomplete explanation of variance in game attendance makes sense be
 ```{r}
 #| label: fig-clark
 #| fig-cap: "Attendance and Rolling Wins; games highlighted include Caitlin Clark"
-coef_vec <- coef(attendance_model)
-beta_wins <- coef_vec["rolling_wins_44"]
-
-df_aug <- attendance_model |>
+df_aug <- mod_attendance |>
   broom::augment()
 
 ggplot(
   df_aug,
-  aes(x = rolling_wins_44, y = .resid, color = team_name)
+  aes(x = home_win_prob, y = .resid, color = name_current)
 ) +
   geom_point(alpha = 0.25, size = 1.2) +
-  geom_abline(
-    intercept = 0,
-    slope = beta_wins,
-    linewidth = 1.2,
-    color = "black"
-  )  +
   labs(
     title = "Attendance vs. Rolling Win Count",
     subtitle = "Residual attendance after team, season, and calendar controls",
@@ -191,8 +156,8 @@ ggplot(
   theme_minimal(base_size = 10) +
   theme(legend.position = "none") +
   geom_point(
-    data = filter(df_aug, caitlin_clark_game == 1),
-    aes(x = rolling_wins_44, y = .resid),
+    data = filter(df_aug, is_cc == 1),
+    aes(y = .resid),
     shape = 21,
     size = 2.6,
     stroke = 0.7,
