@@ -3,7 +3,7 @@
 
 /.quarto/
 /_manuscript
-index_files/
+*_files/
 
 *.synctex.gz
 *.png
@@ -25,3 +25,4 @@ notebooks/*
 .DS_Store
 
 **/*.quarto_ipynb
+.positai

@@ -33,6 +33,8 @@ jobs:
             any::gt
             any::here
             any::tidyverse
+            any::janitor
+          include-quarto: false
 
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
