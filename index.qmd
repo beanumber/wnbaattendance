@@ -313,6 +313,17 @@ mod_attend |>
   map(summary)
 ```
 
+@tbl-glance characterizes the model fits. 
+
+```{r}
+#| label: tbl-glance
+#| tbl-cap: "Comparison of models."
+mod_attend |>
+  map(broom::glance) |>
+  bind_rows() |>
+  knitr::kable(digits = 3)
+```
+
 
 ```{r}
 #| label: tbl-model
