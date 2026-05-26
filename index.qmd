@@ -73,6 +73,8 @@ In their 2023 paper comparing the in person attendance demand of the WNBA and th
 
 ## Data {#sec-data}
 
+### Game logs and attendance
+
 Our analysis is based on game-level data that spans WNBA history, beginning in 1997 and continuing through the end of the 2025 season. 
 Our final data set contains observations from `r format(nrow(wnba_gl), big.mark = ",")` games.
 
@@ -149,34 +151,167 @@ ggplot(wnba_gl, aes(x = factor(season_id), y = attendance, color = factor(is_cc)
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-We used the game-level results data to model team strength as a continuous variable. 
+### Estimating team strength {#sec-elo}
+
+We used the game-level results data to model the strength of each WNBA team as a time series. 
 Measuring team strength is necessary to test our hypothesis that attendance is in part driven by the desire of fans to see quality basketball. 
 We considered season-to-date winning percentage and a rolling 44-game (the length of a typical WNBA season) winning percentage before settling on Elo rating [@Elo1978].
 Originally developed for rating chess players, Elo rating is well-understood in sports analytics as a measure of team strength that updates after each game, and---unlike winning percentage and rolling winning percentage---takes into account not only the outcome but also the estimated team strength of both teams. 
-We used a parameter value of $K = 32$ in our Elo ratings. 
-@fig-elo shows the evolution of Elo rating by franchise for the 12 teams who were active during the 2024 season. 
+
+Let $\theta_{i}(t)$ be the strength of team $i$ at time $t$, where Elo rating are typically centered at 1500. 
+Then if the probability that team $i$ beats team $j$ is modeled by a logistic curve with base 10 and scale factor 400, the win probability is given by:
+$$
+  \Pr(i \text{ beats }j \text{ at time }t) = \frac{1}{1 + 10^{\frac{\theta_{j}(t) - \theta_{i}(t)}{400}}} \,.
+$$
+Each team starts the 1997 season with $\hat{\theta}_{i}(0) = 1500$, and following each game, team $i$'s rating is updated via the formula
+$$
+  \hat{\theta}_{i}(t+1) = \hat{\theta}_{i}(t) + K \cdot I(i \text{ beats } j) \,,
+$$
+where $I(i \text{ beats } j)$ is an indicator variable that is 1 if $i$ beats $j$ and $-1$ if $j$ beats $i$, and $K = 32$ is a constant that controls how sensitive the ratings are to each game. 
+@fig-elo shows the evolution of Elo rating $\hat{\theta}_i(t)$ by franchise for the 12 teams who were active during the 2024 season. 
 The recent poor performance of the Los Angeles Sparks, the 2010 dominance of the Seattle Storm, and the recent rise of the New York Liberty and Indiana Fever are easily visible.
 
 ```{r}
 #| label: fig-elo
-#| fig-cap: "Evolution of team Elo ratings in the WNBA (1997-2025). Only franchises active in 2024 are shown. The recent poor performance of the Los Angeles Sparks, the 2010 dominance of the Seattle Storm, and the recent rise of the New York Liberty and Indiana Fever are easily visible. "
+#| fig-cap: "Evolution of team Elo ratings in the WNBA (1997-2025). Only franchises active in 2024 are shown. The recent poor performance of the Los Angeles Sparks, the 2010 dominance of the Seattle Storm, and the recent rise of the New York Liberty and Indiana Fever are easily visible. Note that all franchises begin with a 1500 rating. "
 wnba_gl |>
   filter(is_active, team_abbreviation != "GSV") |>
   ggplot(aes(x = game_date, y = elo.A)) +
+  geom_hline(aes(yintercept = 1500), linetype = 3) +
   geom_line() +
   facet_wrap(vars(name_current)) +
-  scale_y_continuous("Elo rating") +
-  scale_x_date("Season") +
+  scale_y_continuous(latex2exp::TeX(r"(Elo rating ($\hat{\theta}_i(t)$))")) +
+  scale_x_date("Time (t)") +
   theme_minimal(base_size = 10) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Estimating home win probability
+
+The Elo ratings estimated above can then be plugged back into the win probability formula to estimate the home teams's chances of winning. 
+We also added a 12-point home court advantage to our home win probability model, so that:
+$$
+  \hat{p}_{ij}(\hat{\theta}_i(t), \hat{\theta}_j(t), t) = \Pr(i \text{ beats }j \text{ at time }t \text{ at home}) = \frac{1}{1 + 10^{\frac{\hat{\theta}_{j}(t) - \left( \theta_{i}(t) + 12 \right)  }{400}}} \,.
+$$
+We arrived at 12 points by manually calibrating the win probabilities to match the observed frequencies. 
+While the model was less accurate at the extremes (it was consistently reluctant to predict nearly certain home wins and losses), it fit very well in the middle where most of the games occur (see @tbl-calibrate). 
+
+```{r}
+#| label: tbl-calibrate
+#| tbl-cap: "Calibration of home win probability model, based on Elo ratings. We note that in the most frequent situations, where the home team was a slight favorite, the observed home win probability is within 3 percentage points of the predicted home probability. However, in those rarer occasions where a home win was extremely likely or unlikely, the model was less accurate. "
+wnba_gl |>
+  group_by(wpct_bin = cut(home_win_prob, breaks = 10)) |>
+  summarize(
+    games = n(),
+    bin_midpoint = median(home_win_prob),
+    obs_home_wpct = mean(win_flag, na.rm = TRUE)
+  ) |>
+  mutate(diff = obs_home_wpct - bin_midpoint) |>
+  janitor::clean_names(case = "title") |>
+  gt() |>
+  tab_header(
+    title = "WNBA Home Win Probability Model Calibration (1997-2025)",
+    subtitle = "10 Equally-spaced Bins"
+  ) |>
+  fmt_number(
+    decimals = 3
+  ) |>
+  fmt_number(columns = Games, decimals = 0) |>
+  tab_options(
+    table.font.size = px(11),
+    table.width = pct(100)
+  )
+
 ```
 
 
 ## Methods
 
-We included a 12-point home court advantage to our home win probability model. 
+Our goal is to model the attendance ($y$) at a given game. 
+Our major explanatory variables are the estimated strength of the home team ($\hat{\theta}_i(t)$), the estimated strength of the visiting team ($\hat{\theta}_j(t)$) and the estimated home win probability ($\hat{p}_{ij}(t)$) (which is itself a function of the estimated team strengths). 
+As time-related control variables, we include the the season ($\tau_1$), the month of the year ($\tau_2$), and day of the week ($\tau_3$) as fixed effects.
+To control for city-related effects, we also include the team name ($\phi_1$), as well as the median income ($\phi_2$) and population ($\phi_3$) of the home city[^median].
+Finally, we include an indicator based on whether Caitlin Clark played more than 0 minutes in the game ($\chi$). 
+
+[^median]: Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), we chose to use the median of the population and median income across all of the available years of data as a constant value. While this does mean that the growth in cities like Phoenix or Las Vegas is ignored, we doubt this will meaningfully affect our results, especially since the team fixed effect should capture some of that variability. 
+
+We also know the arena in which the game took place and the capacity of that arena. 
+Thus, and alternative response variable is percentage of arena capacity filled ($\gamma$). 
+
+
+
+### Response variables
+
+In @fig-attendance-year, we observe the relationship between attendance and estimated home win probability. 
+In most years, the slope appears to be positive. 
+
+```{r}
+#| label: fig-attendance-year
+#| fig-cap: "WNBA attendance by season, against estimated home win probability. We note that in most years, the slope of the association appears to be positive. "
+ggplot(wnba_gl, aes(x = home_win_prob, y = attendance, color = factor(is_cc))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = 0, color = "black") +
+  facet_wrap(vars(season_id)) +
+  scale_y_log10("Attendance") +
+  scale_x_continuous("Estimated Home Win Probability") +
+  scale_color_discrete(name = "Clark") +
+  theme_minimal(base_size = 10)
+```
+
+In @fig-capacity-year, we note similar trends in the relationship between the percentage of the arena capacity filled and the estimated home win probability. 
+We also note that since arena capacity cannot exceed 1, there are edge effects created by sellouts. 
+Those sellouts are much more frequent in the last two years of data, and many of the sellouts involve Caitlin Clark. 
+
+```{r}
+#| label: fig-capacity-year
+#| fig-cap: "WNBA percentage of arena capacity filled by season, against estimated home win probability. We note the edge effects caused by sellouts, which occur much more frequently in 2024 and 2025. "
+wnba_gl |>
+  group_by(arena) |>
+  mutate(pct_capacity = attendance / max(attendance)) |>
+  ggplot(aes(x = home_win_prob, y = pct_capacity, color = factor(is_cc))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = 0, color = "black") +
+  facet_wrap(vars(season_id)) +
+  scale_y_continuous("Percentage of Arena Capacity") +
+  scale_x_continuous("Estimated Home Win Probability") +
+  scale_color_discrete(name = "Clark") +
+  theme_minimal(base_size = 10)
+```
+
+Because the raw attendance figures are not normally distributed, we model the logarithm of attendance. 
+Similarly, because the percentage of arena capacity are bound above by 1 and below by 0, we employ a Tobit regression model. 
+
+### Modeling fan engagement
+
+As noted previously, there are multiple notions of drives fan engagement relevant to the WNBA. 
+Each of these notions can be captured by a simple bivariate function of the corresponding strengths of the teams ($f_k(\hat{\theta}_i(t), \hat{\theta}_i(t))$). 
+
+- Quality of play: fans may wish to attend a game in person if the quality of play is high. We model this as the sum of the Elo rating of the two teams ($f_1(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{\theta}_i(t) + \hat{\theta}_j(t)$)
+- Loss aversion: fans may wish to attend a game to see their team (the home team) win. We model this using the estimated home win probability function above ($f_2(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{p}_{ij}(t)$)
+- Uncertainty outcome hypothesis: fans may wish to attend a game for which the outcome is unclear. We model this as ($f_3(\hat{\theta}_i(t), \hat{\theta}_i(t)) = |\hat{\theta}_i(t) - \hat{\theta}_j(t)|$)
+
+Thus, our general regression model is of the form:
+$$
+  \ln{y} = \beta_0 + \beta_1^{(k)} \cdot f_k(\hat{\theta}_i(t), \hat{\theta}_i(t)) + \beta_2 \cdot \mathbf{\tau} + \beta_3 \cdot \phi + \beta_4 \cdot \chi + \epsilon \,,
+$$
+where $k \in \{1, 2, 3\}$, and $\beta_2, \beta_3 \in \mathbb{R}^3$ since $\mathbf{\tau} = \{\tau_1, \tau_2, \tau_3\}$ and $\mathbf{\phi} = \{\phi_1, \phi_2, \phi_3\}$. 
+We fit the same set of models with $\gamma$ as the response, but the in Tobit framework. 
 
 ## Results
+
+
+```{r}
+f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + name_current + median_income + median_pop + is_cc"
+f_exp <- c("I(elo.A + elo.B)", "abs(elo.A - elo.B)", "home_win_prob")
+
+mod_attend <- f_exp |>
+  map_chr(~paste("log(attendance + 1) ~ ", .x, "+", f_control)) |>
+  map(as.formula) |>
+  map(lm, data = filter(wnba_gl, !season_id %in% c(2021), is_active))
+
+mod_attend |>
+  map(summary)
+```
 
 
 ```{r}
