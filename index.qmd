@@ -126,10 +126,26 @@ wnba_gl |>
 @fig-boxplots shows the distribution of attendance across all seasons, with a logarithmic scale on the vertical axis. 
 There is no attendance data from 2020, because all games that year were played in the WNBA bubble due to the COVID-19 pandemic, and some games in 2021 continued to be played with artificially low attendance.  
 
+```{r}
+wnba_summary <- wnba_gl |>
+  group_by(season_id) |>
+  summarize(
+    num_games = n(),
+    avg_attendance = mean(attendance)
+  )
+
+attend_hi <- max(wnba_summary$avg_attendance, na.rm = TRUE)
+attend_prev_hi <- min(tail(sort(wnba_summary$avg_attendance), 2))
+attend_pct_increase <- 100 * (attend_hi / attend_prev_hi - 1)
+```
+
+
 Several broad observations can be made from @fig-boxplots. 
 First, after some initial enthusiasm during the first three years of the league, attendance largely plateaued or steadily but slightly declined from 2000 to 2017. 
 The two years preceding the pandemic (2018-2019) had notably lower attendance. 
 Since the pandemic, attendance has rebounded, exceeding its initial levels in 2024 and reaching new heights in 2025. 
+In fact, average WNBA attendance in 2025 was `r format(round(attend_hi), scientific = FALSE, big.mark = ",")`, which was `r round(attend_pct_increase, 1)`% higher than the previous high in 1998. 
+
 These last two years coincide with the arrival of Caitlin Clark, the 2024 Rookie of the Year Award winner who is widely regarded as a generational talent. 
 Disentangling the "Caitlin Clark effect" from the league's overall attendance trends is one of our goals. 
 
@@ -321,7 +337,7 @@ We fit the same set of models with $\gamma$ as the response, but the in Tobit fr
 
 ```{r}
 f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + name_current + median_income + median_pop + is_cc"
-f_exp <- c("I(elo.A + elo.B)", "abs(elo.A - elo.B)", "home_win_prob")
+f_exp <- c("I(elo.A + elo.B - 3000)", "I(abs(elo.A - elo.B))", "I(home_win_prob - 0.5)")
 
 mod_attend <- f_exp |>
   map_chr(~paste("log(attendance + 1) ~ ", .x, "* factor(season_id) +", f_control)) |>
@@ -387,30 +403,55 @@ mod_attend |>
   knitr::kable(digits = 3)
 ```
 
-@fig-season-coefs shows that expected attendance is only just returning its 1997 baseline in the most recent season. 
+@fig-season-coefs shows that after controlling for the Caitlin Clark effect, expected attendance is only just returning its 1997 baseline in the most recent season. 
+This is a mixed blessing. 
+On the one hand, league expected attendance has fully recovered from the COVID-19 pandemic and the malaise of the early 2000s and 2010s. 
+However, a substantial amount of the increase in attendance appears attributable to Caitlin Clark. 
 
 ```{r}
 #| label: fig-season-coefs
 #| fig-cap: "Estimated season-level fixed effects for natural logarithm of attendance models. "
 mod_attend_coefs |>
   filter(str_detect(term, "season_id")) |>
-  mutate(
-    season_id = parse_number(str_sub(term, -4)),
-    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
-    scaled_estimate = case_when(
-      model == "f1" ~ estimate / (mean(wnba_gl$elo.A + wnba_gl$elo.B)),
-      model == "f2" ~ estimate / (mean(abs(wnba_gl$elo.A - wnba_gl$elo.B))),
-      model == "f3" ~ estimate / (mean(wnba_gl$home_win_prob))
-    )
-  ) |>
-  ggplot(aes(x = season_id, y = scaled_estimate, color = type)) +
+  filter_out(str_detect(term, ":")) |>
+  mutate(season_id = parse_number(str_sub(term, -4))) |>
+  ggplot(aes(x = season_id, y = estimate, color = model)) +
   geom_hline(yintercept = 0, linetype = 3) +
   geom_line() +
   scale_x_continuous("Season") +
   scale_y_continuous("Estimated Season Fixed Effect") +
-  theme_minimal(base_size = 10) +
-  facet_wrap(vars(model))
+  theme_minimal(base_size = 10)
 ```
+
+@fig-season-slopes show a general increase in the slope of the interaction terms in all three models in recent years. 
+For all three models, these change in slope coefficients were decidedly negative until around 2015. 
+This suggests that the relationship between attendance and fan engagement was more moderate during those years. 
+While the change in slope associated with model $f_1$ is still negative, it is closer to zero than it has been in the past. 
+The changes in slope associated with models $f_2$ and $f_3$ are now positive, although it is difficulty to assess the long-term trend due to the pandemic being only a few years past. 
+
+```{r}
+#| label: fig-season-slopes
+#| fig-cap: "Estimated season-level changes in slopes for natural logarithm of attendance models. "
+mod_attend_coefs |>
+  filter(str_detect(term, ":")) |>
+  mutate(
+    season_id = parse_number(str_sub(term, -4)),
+    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
+    scaled_estimate = case_when(
+      model == "f1" ~ estimate * (mean(wnba_gl$elo.A + wnba_gl$elo.B - 3000)),
+      model == "f2" ~ estimate * (mean(abs(wnba_gl$elo.A - wnba_gl$elo.B))),
+      model == "f3" ~ estimate * (mean(wnba_gl$home_win_prob - 0.5))
+    )
+  ) |>
+  ggplot(aes(x = season_id, y = scaled_estimate, color = model)) +
+  geom_hline(yintercept = 0, linetype = 3) +
+  geom_line() +
+  geom_smooth(se = 0) +
+  scale_x_continuous("Season") +
+  scale_y_continuous("Estimated Season Fixed Effect") +
+  theme_minimal(base_size = 10)
+```
+
 
 
 ## Conclusion
@@ -421,3 +462,14 @@ mod_attend_coefs |>
 :::{#refs}
 
 :::
+
+## Appendix {.appendix}
+
+```{r}
+#| label: fig-resids
+#| fig-cap: "Residual plots for models. "
+#| layout-ncol: 2 
+mod_attend |>
+  map(plot, ask = FALSE)
+```
+
