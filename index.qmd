@@ -324,7 +324,7 @@ f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_da
 f_exp <- c("I(elo.A + elo.B)", "abs(elo.A - elo.B)", "home_win_prob")
 
 mod_attend <- f_exp |>
-  map_chr(~paste("log(attendance + 1) ~ ", .x, "+", f_control)) |>
+  map_chr(~paste("log(attendance + 1) ~ ", .x, "* factor(season_id) +", f_control)) |>
   map(as.formula) |>
   map(lm, data = wnba_gl |>
         filter(!season_id %in% c(2021), is_active) |>
@@ -357,10 +357,10 @@ mod_attend_coefs |>
 ```
 
 Consider first the strong evidence for the Caitlin Clark effect. 
-Even for the smallest coefficient in @tbl-coefs, the expected attendance nearly doubles (i.e., is multiplied by $\exp(0.672)$ = `r mod_attend_coefs |> filter(term == "is_cc") |> select(estimate) |> min() |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
+Even for the smallest coefficient in @tbl-coefs, the expected attendance nearly doubles (i.e., is multiplied by $\exp(0.653)$ = `r mod_attend_coefs |> filter(term == "is_cc") |> select(estimate) |> min() |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
 
 Conversely, the evidence for the quality of play and uncertainty of outcome hypotheses is weak, with those coefficients barely moving the needle. 
-A 10 percentage point increase in the probability of the home team winning is associated with a modest `r round(100 * (exp(0.476/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
+A 10 percentage point increase in the probability of the home team winning is associated with a modest `r round(100 * (exp(0.422/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
 
 ```{r}
 #| label: tbl-anova
@@ -369,13 +369,14 @@ mod_attend |>
   map(anova) |>
   map(broom::tidy) |>
   bind_rows(.id = "model") |>
-  arrange(term, model) |>
+  filter_out(str_detect(term, "Residuals")) |>
+  arrange(df, term, model) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
 
 @tbl-glance characterizes the model fits. 
-We can see that while all models achieve a similar fit, model $f_1$ (corresponding to the quality of play hypothesis) is slightly superior by most metrics. 
+We can see that while all models achieve a similar fit, models $f_1$ (corresponding to the quality of play hypothesis) and $f_3$ (corresponding to the home win probability) are slightly superior by most metrics. 
 
 ```{r}
 #| label: tbl-glance
@@ -386,22 +387,29 @@ mod_attend |>
   knitr::kable(digits = 3)
 ```
 
-@fig-season-coefs shows that expected attendance is only just surpassing its 1997 baseline in the most recent season. 
-This complicates the Caitlin Clark narrative: while the league attendance does appear to have recovered, the effect of Clark dwarfs this recovery. 
-
+@fig-season-coefs shows that expected attendance is only just returning its 1997 baseline in the most recent season. 
 
 ```{r}
 #| label: fig-season-coefs
 #| fig-cap: "Estimated season-level fixed effects for natural logarithm of attendance models. "
 mod_attend_coefs |>
   filter(str_detect(term, "season_id")) |>
-  mutate(season_id = parse_number(term)) |> view()
-  ggplot(aes(x = season_id, y = estimate, color = model)) +
+  mutate(
+    season_id = parse_number(str_sub(term, -4)),
+    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
+    scaled_estimate = case_when(
+      model == "f1" ~ estimate / (mean(wnba_gl$elo.A + wnba_gl$elo.B)),
+      model == "f2" ~ estimate / (mean(abs(wnba_gl$elo.A - wnba_gl$elo.B))),
+      model == "f3" ~ estimate / (mean(wnba_gl$home_win_prob))
+    )
+  ) |>
+  ggplot(aes(x = season_id, y = scaled_estimate, color = type)) +
   geom_hline(yintercept = 0, linetype = 3) +
-  geom_line(size = 1) +
-  scale_x_continuous("Time (t)") +
+  geom_line() +
+  scale_x_continuous("Season") +
   scale_y_continuous("Estimated Season Fixed Effect") +
-  theme_minimal(base_size = 10)
+  theme_minimal(base_size = 10) +
+  facet_wrap(vars(model))
 ```
 
 
