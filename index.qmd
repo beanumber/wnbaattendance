@@ -54,7 +54,10 @@ library(gt)
 ```
 
 ```{r}
-wnba_gl <- read_rds(here::here("data/wnba_gl.rds"))
+wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
+  group_by(arena) |>
+  mutate(pct_capacity = attendance / max(attendance)) |>
+  ungroup()
 ```
 
 ## Introduction {#sec-intro}
@@ -275,8 +278,6 @@ Those sellouts are much more frequent in the last two years of data, and many of
 #| label: fig-capacity-year
 #| fig-cap: "WNBA percentage of arena capacity filled by season, against estimated home win probability. We note the edge effects caused by sellouts, which occur much more frequently in 2024 and 2025. "
 wnba_gl |>
-  group_by(arena) |>
-  mutate(pct_capacity = attendance / max(attendance)) |>
   ggplot(aes(x = home_win_prob, y = pct_capacity, color = factor(is_cc))) +
   geom_point() +
   geom_smooth(method = "lm", se = 0, color = "black") +
@@ -355,8 +356,11 @@ mod_attend <- f_exp |>
 #  map(summary)
 ```
 
+### Attendance {#sec-attend}
+
 In keeping with recent guidance from @wasserstein2016asa and @wasserstein2019moving, and with a sample size of over 5000 observations and dozens of coefficients, we are less interested in the p-values shown in @tbl-coefs, and focus our attention on the magnitude and practical impact of the fitted coefficients. 
 (All variables except for population achieve "statistical significance" at the 5\%-level, as shown in @tbl-anova). 
+Residual analysis for the attendance models are shown in @sec-resid-attend. 
 
 ```{r}
 #| label: tbl-coefs
@@ -405,8 +409,8 @@ mod_attend |>
 
 @fig-season-coefs shows that after controlling for the Caitlin Clark effect, expected attendance is only just returning its 1997 baseline in the most recent season. 
 This is a mixed blessing. 
-On the one hand, league expected attendance has fully recovered from the COVID-19 pandemic and the malaise of the early 2000s and 2010s. 
-However, a substantial amount of the increase in attendance appears attributable to Caitlin Clark. 
+On the one hand, even after controlling for Clark, league expected attendance has fully recovered from the COVID-19 pandemic and the malaise of the early 2000s and 2010s. 
+On the other hand, it seems unlikely that the league would have achieved record high attendance without Clark.  
 
 ```{r}
 #| label: fig-season-coefs
@@ -423,11 +427,12 @@ mod_attend_coefs |>
   theme_minimal(base_size = 10)
 ```
 
-@fig-season-slopes show a general increase in the slope of the interaction terms in all three models in recent years. 
+@fig-season-slopes shows a general increase in the slope of the interaction terms in all three models in recent years. 
 For all three models, these change in slope coefficients were decidedly negative until around 2015. 
 This suggests that the relationship between attendance and fan engagement was more moderate during those years. 
+(Note that for all three models, the main effect of the fan engagement term in @tbl-coefs is positive.)
 While the change in slope associated with model $f_1$ is still negative, it is closer to zero than it has been in the past. 
-The changes in slope associated with models $f_2$ and $f_3$ are now positive, although it is difficulty to assess the long-term trend due to the pandemic being only a few years past. 
+The changes in slope associated with models $f_2$ and $f_3$ are now positive, although it is difficult to assess the long-term trend due to the pandemic being only a few years past. 
 
 ```{r}
 #| label: fig-season-slopes
@@ -452,9 +457,125 @@ mod_attend_coefs |>
   theme_minimal(base_size = 10)
 ```
 
+### Percentage of Arena Capacity
 
+Because our response variable $\gamma$ is constrained between 0 and 1, but has significant mass at 1 exactly, we fit a Papke-Wooldridge fractional response model [@papke1996econometric] with HC1 sandwich estimators for the covariance matrix. 
+
+```{r}
+#| label: fit-glm
+library(lmtest)
+library(sandwich)
+mod_pct <- f_exp |>
+  map_chr(~paste("pct_capacity ~ ", .x, "* factor(season_id) +", f_control)) |>
+  map(as.formula) |>
+  map(glm, data = wnba_gl |>
+        filter(!season_id %in% c(2021), is_active) |>
+        mutate(
+          median_income = median_income / 1000,
+          median_pop = median_pop / 1000000,
+          pct_capacity_safe = (pct_capacity * (n() - 1) + 0.5) / n()
+        ),
+      family = binomial(link = "logit")
+  ) |>
+  set_names(nm = paste0("f", 1:3))
+
+vcov_pct <- mod_pct |>
+  map(vcovHC, type = "HC1")
+```
+
+@tbl-coefs2 reports the coefficients from the percentage of arena capacity models. 
+
+```{r}
+#| label: tbl-coefs2
+#| tbl-cap: "Table of coefficients from percentage of arena capacity models. "
+mod_pct_coefs <- map2(mod_pct, vcov_pct, lmtest::coeftest) |>
+  map(broom::tidy) |>
+  bind_rows(.id = "model") 
+
+mod_pct_coefs |>
+  filter_out(str_detect(term, "factor|name")) |>
+  knitr::kable()
+```
+
+@tbl-glance2 shows the model fit metrics for the percentage of arena capacity models. 
+
+```{r}
+#| label: tbl-glance2
+#| tbl-cap: "Comparison of percentage of arena capacity models."
+mod_pct |>
+  map(broom::glance) |>
+  bind_rows(.id = "model") |>
+  knitr::kable()
+```
+
+@tbl-anova2 shows the analysis of variance for the percentage of arena capacity models. 
+
+```{r}
+#| label: tbl-anova2
+#| tbl-cap: "Analysis of variance for terms in models for percentage of arena capacity. "
+mod_pct |>
+  map(anova) |>
+  map(broom::tidy) |>
+  bind_rows(.id = "model") |>
+  filter_out(str_detect(term, "NULL")) |>
+  arrange(df, term, model) |>
+  janitor::clean_names(case = "title") |>
+  knitr::kable(digits = 3)
+```
+
+@fig-season-coefs2 shows that...
+
+```{r}
+#| label: fig-season-coefs2
+#| fig-cap: "Estimated season-level fixed effects for percentage of arena capacity models. "
+mod_pct_coefs |>
+  filter(str_detect(term, "season_id")) |>
+  filter_out(str_detect(term, ":")) |>
+  mutate(season_id = parse_number(str_sub(term, -4))) |>
+  ggplot(aes(x = season_id, y = estimate, color = model)) +
+  geom_hline(yintercept = 0, linetype = 3) +
+  geom_line() +
+  scale_x_continuous("Season") +
+  scale_y_continuous("Estimated Season Fixed Effect") +
+  theme_minimal(base_size = 10)
+```
+
+@fig-season-slopes2 shows that...
+
+```{r}
+#| label: fig-season-slopes2
+#| fig-cap: "Estimated season-level changes in slopes for percentage of arena capacity models. "
+mod_pct_coefs |>
+  filter(str_detect(term, ":")) |>
+  mutate(
+    season_id = parse_number(str_sub(term, -4)),
+    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
+    scaled_estimate = case_when(
+      model == "f1" ~ estimate * (mean(wnba_gl$elo.A + wnba_gl$elo.B - 3000)),
+      model == "f2" ~ estimate * (mean(abs(wnba_gl$elo.A - wnba_gl$elo.B))),
+      model == "f3" ~ estimate * (mean(wnba_gl$home_win_prob - 0.5))
+    )
+  ) |>
+  ggplot(aes(x = season_id, y = scaled_estimate, color = model)) +
+  geom_hline(yintercept = 0, linetype = 3) +
+  geom_line() +
+  geom_smooth(se = 0) +
+  scale_x_continuous("Season") +
+  scale_y_continuous("Estimated Season Fixed Effect") +
+  theme_minimal(base_size = 10)
+```
 
 ## Conclusion
+
+### Limitations
+
+Because the percentage of arena capacity data is right-censored, we considered a Tobit regression model [@mcdonald1980uses], but our residuals violated the normality and homoskedasticity conditions. 
+We also considered fitting a Beta regression model with a logit link function, and converting the fixed effects for seasons to random effects, but those models didn't converge. 
+
+
+### Future work
+
+### Discussion
 
 
 ## References {.unnumbered}
@@ -464,6 +585,8 @@ mod_attend_coefs |>
 :::
 
 ## Appendix {.appendix}
+
+### Residual analysis of attendance models {#sec-resid-attend}
 
 ```{r}
 #| label: fig-resids
