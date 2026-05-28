@@ -358,6 +358,8 @@ To capture this, we include an interaction term between our measures of fan enga
 
 ### Model formulation for attendance {#sec-mod-attend}
 
+Like @CoatesHumphreysZhou2014, we model the natural logarithm of attendance. 
+
 Our general regression model for attendance is:
 $$
   \ln{y} = \beta_0^{(k)} + \beta_1^{(k)} f_k + \underbrace{\beta_2^{(k)} \tau_1 + \beta_3^{(k)} \tau_2 + \beta_4^{(k)} \tau_3}_{\text{time-related}} + \underbrace{\beta_5^{(k)} \phi_1 + \beta_6^{(k)} \phi_2 + \beta_7^{(k)} \phi_3}_{\text{ city-related }} + \beta_8^{(k)} \chi + \underbrace{\beta_9^{(k)} f_k \tau_1}_{\text{interaction}} + \epsilon \,,
@@ -366,6 +368,7 @@ where $k \in \{1, 2, 3\}$, and $\beta_j^{(k)} \in \mathbb{R}$ for $j = \{0, 1, 6
 Most notably $\beta_2^{(k)}$ and $\beta_9^{(k)}$ have `r length(levels(factor(wnba_gl$season_id)))` values (corresponding to each season after 1997) and $\beta_5^{(k)}$ has `r length(levels(factor(wnba_gl$name_current)))` values (corresponding to each team). 
 Only current WNBA franchises are included in the regression model. 
 We also excluded all data from the 2020 and 2021 seasons, since there were no fans allowed in all or parts of both seasons. 
+
 
 
 
