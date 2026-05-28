@@ -35,7 +35,9 @@ jobs:
             any::tidyverse
             any::janitor
             any::latex2exp
+            any::lmtest
             any::modelsummary
+            any::sandwich
           include-quarto: false
 
       - uses: quarto-dev/quarto-actions/setup@v2
