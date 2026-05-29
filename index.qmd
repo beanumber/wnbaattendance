@@ -89,8 +89,6 @@ While no Granger causality tests were run, the predominant view has been causali
 
 Differences in the literature over how to measure team quality (wins, wins lagged, number of championships in past years, win probability, star power), attendance (logs, lags, linear regression or censored), the inclusion of control variables and non-linear forms also emerged [@wiseman2003team; @woltring2018attendance; @kim2023winning; @deschriver2002determinants; @paul2019attendance].
 
-[@vrooman2012theory]
-
 In their study of attendance determinants in the WNBA, @AghaBerri2023 argue that a major reason why attendance is considerably lower at WNBA games than NBA games is that the women’s league is still in its early years. 
 The WNBA began play in 1997, while the NBA began in 1946. 
 Agha and Berri compare attendance data of the tenth season of the WNBA (2006) and that of the NBA (1955-56) [@AghaBerri2023, p. 36.] 
@@ -114,6 +112,22 @@ In particular, fan demand will become more responsive to team quality.
 Using game attendance[^attendance] and team performance data from 1997 through 2025, we test these hypotheses.
 
 [^attendance]: Note that, as in most sports leagues, there is always the possibility finagling with game attendance figures. The WNBA appears to give attendance counting instructions to teams that define attendance as turnstile count, plus season ticket sales, plus complimentary tickets and promotions. There is considerable for these factors to be manipulated, rendering the possibility of noise in the attendance figures we use.
+
+### Andrew other passage
+
+The relationship between attendance and winning percentage has been examined, but such
+studies often look at winning percentage as causation for attendance. 
+@davis2008interaction and @horowitz2007if both found that attendance and winning percentage were related. 
+Horowitz concluded a bidirectional relationship between the two, while Davis suggested that causation runs from winning percentage to attendance. 
+In a following study, @davis2009analyzing found winning percentage as a significant determinant of attendance for 12 National League teams; though the study did not establish causation both ways. 
+@lemke2010estimating found attendance increases as home team win probability increases. There is evidence that causation may run from attendance to winning percentage, but the bulk of the literature has been researched the other way.
+
+The present study controls for payroll and stadium capacity as both have been shown to affect attendance. 
+@wiseman2003team found team payroll was positively correlated to team winning percentage (9). 
+Additionally, they found that this relationship has grown stronger since the late 1990’s. 
+@hall2002testing did not find causality evidence from payroll to team winning percentage in their entire dataset, but they did note an increased correlation in the 1990’s. 
+Additionally, they stated that an MLB team with a payroll of at least 150% of the league average could expect a winning percentage of at least .550. 
+This is an important finding, because @vrooman2012theory identified .550 as a benchmark winning percentage for qualifying as a playoff team.
 
 ## Data {#sec-data}
 
