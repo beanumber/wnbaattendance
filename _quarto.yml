@@ -13,6 +13,7 @@ format:
     comments:
       hypothesis: true
   pdf: default
+  docx: default
 
 
 
