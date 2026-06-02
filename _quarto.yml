@@ -1,8 +1,6 @@
 project:
-  type: manuscript
-  render:
-    - "*.qmd"
-    - "!data-raw/"
+  type: website
+  output-dir: _site
 
 execute:
   freeze: auto
