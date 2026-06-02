@@ -11,6 +11,10 @@ name: paper
 jobs:
   paper:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
