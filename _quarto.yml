@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: _site
+  include:
+    - index.qmd
+    - "*.md"
 
 execute:
   freeze: auto
