@@ -42,7 +42,9 @@ jobs:
             any::lmtest
             any::modelsummary
             any::sandwich
-          include-quarto: false
+            any::VGAM
+            any::marginaleffects
+            any::broom
 
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
