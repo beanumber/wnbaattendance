@@ -3,7 +3,7 @@ project:
   output-dir: _site
   include:
     - index.qmd
-    - "*.md"
+    - readme.md
 
 execute:
   freeze: auto
