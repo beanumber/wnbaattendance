@@ -227,4 +227,4 @@ ggplot(slopes_data, aes(x = season_id, y = estimate, color = term, fill = term, 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-- the first wnba teams to fold were the miami sol and the portland fire (2003)
+- buckets for arena capacity to not need tobit function
