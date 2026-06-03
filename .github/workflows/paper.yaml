@@ -11,6 +11,10 @@ name: paper
 jobs:
   paper:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -38,17 +42,22 @@ jobs:
             any::lmtest
             any::modelsummary
             any::sandwich
-          include-quarto: false
+            any::VGAM
+            any::marginaleffects
+            any::broom
 
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
           tinytex: true
 
       - name: Render Quarto Project
-        uses: quarto-dev/quarto-actions/publish@v2
+        uses: quarto-dev/quarto-actions/render@v2
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          target: gh-pages
-#          to: pdf
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
