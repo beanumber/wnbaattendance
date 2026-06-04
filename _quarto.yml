@@ -1,9 +1,8 @@
 project:
-  type: website
-  output-dir: _site
-  include:
-    - index.qmd
-    - readme.md
+  type: manuscript
+  render:
+    - "*.qmd"
+    - "!data-raw/"
 
 execute:
   freeze: auto

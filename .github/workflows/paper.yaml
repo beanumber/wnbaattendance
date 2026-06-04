@@ -34,30 +34,26 @@ jobs:
           upgrade: 'TRUE'
           packages:
             any::remotes
+            any::broom
             any::gt
             any::here
-            any::tidyverse
             any::janitor
             any::latex2exp
             any::lmtest
             any::modelsummary
             any::sandwich
-            any::VGAM
-            any::marginaleffects
-            any::broom
+            any::tidyverse
+          include-quarto: false
 
       - uses: quarto-dev/quarto-actions/setup@v2
         with:
           tinytex: true
 
       - name: Render Quarto Project
-        uses: quarto-dev/quarto-actions/render@v2
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: quarto-dev/quarto-actions/publish@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
+          target: gh-pages
+#          to: pdf
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 

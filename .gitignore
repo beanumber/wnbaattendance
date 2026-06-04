@@ -4,6 +4,7 @@
 /.quarto/
 /_manuscript
 *_files/
+_site/
 
 *.synctex.gz
 *.png
