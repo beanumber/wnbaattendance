@@ -303,14 +303,15 @@ In most years, the slope appears to be positive.
 ```{r}
 #| label: fig-attendance-year
 #| fig-cap: "WNBA attendance by season, against estimated home win probability. We note that in most years, the slope of the association appears to be positive. "
-ggplot(wnba_gl, aes(x = home_win_prob, y = attendance, color = factor(is_cc))) +
+plot_attend <- ggplot(wnba_gl, aes(x = home_win_prob, y = attendance, color = factor(is_cc))) +
   geom_point() +
   geom_smooth(method = "lm", se = 0, color = "black") +
   facet_wrap(vars(season_id)) +
-  scale_y_log10("Attendance") +
   scale_x_continuous("Estimated Home Win Probability") +
   scale_color_discrete(name = "Clark") +
   theme_minimal(base_size = 10)
+plot_attend +
+  scale_y_log10("Attendance")
 ```
 
 In @fig-capacity-year, we note similar trends in the relationship between the percentage of the arena capacity filled and the estimated home win probability. 
@@ -320,15 +321,10 @@ Those sellouts are much more frequent in the last two years of data, and many of
 ```{r}
 #| label: fig-capacity-year
 #| fig-cap: "WNBA percentage of arena capacity filled by season, against estimated home win probability. We note the edge effects caused by sellouts, which occur much more frequently in 2024 and 2025. "
-wnba_gl |>
-  ggplot(aes(x = home_win_prob, y = pct_capacity, color = factor(is_cc))) +
-  geom_point() +
-  geom_smooth(method = "lm", se = 0, color = "black") +
-  facet_wrap(vars(season_id)) +
-  scale_y_continuous("Percentage of Arena Capacity") +
-  scale_x_continuous("Estimated Home Win Probability") +
-  scale_color_discrete(name = "Clark") +
-  theme_minimal(base_size = 10)
+plot_capacity <- plot_attend +
+  aes(y = pct_capacity) +
+  scale_y_continuous("Percentage of Arena Capacity")
+plot_capacity
 ```
 
 Because the raw attendance figures are not normally distributed, we model the logarithm of attendance. 
@@ -339,11 +335,51 @@ Similarly, because the percentage of arena capacity are bound above by 1 and bel
 In @sec-elo, we described our use of Elo rating to estimate the strength of the home team ($\hat{\theta}_i(t)$), the strength of the visiting team ($\hat{\theta}_j(t)$) and the home win probability ($\hat{p}_{ij}(t)$) (which is itself a function of the estimated team strengths). 
 
 As noted in @sec-intro, there are multiple notions of what drives fan engagement relevant to the WNBA. 
-Each of these notions can be captured by a simple bivariate function of the corresponding strengths of the teams ($f_k(\hat{\theta}_i(t), \hat{\theta}_i(t))$). 
+Each of these notions can be captured by a simple bivariate function of the corresponding strengths of the teams $f_k(\hat{\theta}_i(t), \hat{\theta}_i(t))$. 
+The first and third have been rescaled so that they will have means close to 0. 
 
 - Quality of play: fans may wish to attend a game in person if the quality of play is high. We model this as the sum of the Elo rating of the two teams ($f_1(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{\theta}_i(t) + \hat{\theta}_j(t)$)
 - Uncertainty of outcome hypothesis: fans may wish to attend a game for which the outcome is unclear. We model this as ($f_2(\hat{\theta}_i(t), \hat{\theta}_i(t)) = |\hat{\theta}_i(t) - \hat{\theta}_j(t)|$)
 - Loss aversion: fans may wish to attend a game to see their team (the home team) win. We model this using the estimated home win probability function above ($f_3(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{p}_{ij}(t)$)
+
+The distribution of attendance with respect to $f_1$ and $f_2$ are shown in @fig-attend-f1 and @fig-attend-f2, respectively, with the corresponding plots for percentage of arena capacity shown in @fig-capacity-f1 and @fig-capacity-f2.
+
+```{r}
+#| label: fig-attend-f1
+#| fig-cap: "asd"
+plot_attend +
+  aes(x = elo.A + elo.B - 3000) +
+  scale_x_continuous("Quality of Play: Sum of Elo rating - 3000") +
+  scale_y_log10("Attendance")
+```
+
+```{r}
+#| label: fig-attend-f2
+#| fig-cap: "asd"
+plot_attend +
+  aes(x = abs(elo.A - elo.B)) +
+  scale_x_continuous("UOH: Absolute Difference in Elo rating") + 
+  scale_y_log10("Attendance")
+```
+
+```{r}
+#| label: fig-capacity-f1
+#| fig-cap: "asd"
+plot_capacity +
+  aes(x = elo.A + elo.B - 3000) +
+  scale_x_continuous("Quality of Play: Sum of Elo rating - 3000")
+```
+
+```{r}
+#| label: fig-capacity-f2
+#| fig-cap: "asd"
+plot_capacity +
+  aes(x = abs(elo.A - elo.B)) +
+  scale_x_continuous("UOH: Absolute Difference in Elo rating")
+```
+
+
+
 
 ### Control variables {#sec-control}
 
