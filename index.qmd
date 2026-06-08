@@ -66,7 +66,7 @@ pkg <- function(x, ...) {
 
 ```{r}
 #| include: false
-manual <- c("ggplot2", "tidycensus")
+manual <- c("ggplot2", "tidycensus", "sandwich")
 pkgs <- unique(c(manual, .packages()))
 knitr::write_bib(pkgs, file = "pkgs.bib")
 ```
@@ -415,9 +415,12 @@ We also excluded all data from the 2020 and 2021 seasons, since there were no fa
 
 ### Model formulation for percentage of arena capacity {#sec-mod-cap}
 
-We fit the same set of models with $\gamma$ as the response, but the in Tobit framework. 
-
-
+We fit the same set of models with $\gamma$ as the response, but because our response variable $\gamma$ is constrained between 0 and 1 and has significant mass at 1 exactly, we use the Papke-Wooldridge fractional response model [@papke1996econometric].
+This is equivalent to fitting a generalized linear model with a logit link function and applying HC1 sandwich estimators [@mackinnon1985some] for the covariance matrix, which we accomplish using the `r pkg("sandwich")` package in R. 
+$$
+  \mathbb{E}{(\gamma | \mathbf{X})} = G(\mathbf{X} \mathbf{\eta}^{(k)}) \,,
+$$
+where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\mathbf{X}$ is as above, and $\mathbf{\eta^{(k)}}$ has the same structure as $\mathbf{\beta}^{(k)}$ defined above. 
 
 
 ## Results
