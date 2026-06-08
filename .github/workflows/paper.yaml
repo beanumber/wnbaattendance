@@ -42,6 +42,7 @@ jobs:
             any::lmtest
             any::modelsummary
             any::sandwich
+            any::tidycensus
             any::tidyverse
           include-quarto: false
 
