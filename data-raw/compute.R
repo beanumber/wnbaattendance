@@ -47,6 +47,7 @@ wnba_gl_active <- wnba_gl_active |>
   ) |>
   ungroup()
 
+
 ## Include only home games -- eliminate duplicates
 
 wnba_gamelogs_home <- wnba_gl_active |>
@@ -55,32 +56,58 @@ wnba_gamelogs_home <- wnba_gl_active |>
 ## Compute Elo ratings
 
 wnba_gamelogs_home <- wnba_gamelogs_home |>
-  mutate(opp_score = parse_number(pts) - parse_number(plus_minus))
+  mutate(opp_score = parse_number(pts) - parse_number(plus_minus)) |>
+  arrange(game_date)
 
 library(elo)
 
-elo <- elo.run(score(pts, opp_score) ~ team_id + opponent, data = wnba_gamelogs_home, k = 32) |>
-  as.data.frame()
+elo <- elo.run(score(pts, opp_score) ~ adjust(team_abbreviation, 60) + opponent + group(game_id), data = wnba_gamelogs_home, k = 32)
 
-home_court_ad <- 12
+mean(final.elos(elo))
 
-wnba_gl_elo <- bind_cols(wnba_gamelogs_home, select(elo, contains("elo"))) |>
+elo_df <- elo |>
+  as.data.frame() |>
+  rename(
+    elo_home_postgame = elo.A,
+    elo_away_postgame = elo.B,
+    elo_home_win_prob = p.A
+  ) |>
   mutate(
-    home_win_prob = 1 / (1 + 10^((elo.B - (elo.A + home_court_ad)) / 400)),
-    max_elo = pmax(elo.A, elo.B)
+    elo_home_pregame = elo_home_postgame - update.A,
+    elo_away_pregame = elo_away_postgame - update.B
   )
 
+elo_df |>
+  summarize(
+    mean_elo_home_pre = mean(elo_home_pregame),
+    mean_elo_home_post = mean(elo_home_postgame),
+    mean_elo_away_pre = mean(elo_away_pregame),
+    mean_elo_away_post = mean(elo_away_postgame),
+    brier = mean((elo_home_win_prob - wins.A)^2),
+    log_loss = -mean(wins.A * log(elo_home_win_prob) + (1 - wins.A) * log(1 - elo_home_win_prob))
+  )
+
+ggplot(elo_df, aes(x = elo_home_pregame, y = elo_away_pregame)) +
+  geom_point()
+
+
+wnba_gl_elo <- bind_cols(wnba_gamelogs_home, select(elo_df, contains("elo"))) |>
+  mutate(
+    max_elo = pmax(elo_home_pregame, elo_away_pregame)
+  )
+
+## Calibration
+
 wnba_gl_elo |>
-  group_by(bin = cut(home_win_prob, breaks = 10)) |>
+  group_by(bin = cut(elo_home_win_prob, breaks = 10)) |>
   summarize(
     num_games = n(),
-    bin_midpoint = median(home_win_prob),
+    bin_midpoint = median(elo_home_win_prob),
     home_win_wpct = mean(win_flag, na.rm = TRUE)
   ) |>
   mutate(diff = home_win_wpct - bin_midpoint) 
 #|>
 #  summarize(rmse = sqrt(mean(win_flag - home_win_prob, na.rm = TRUE)^2))
-
 
 
 write_rds(wnba_gl_elo, here::here("data/wnba_gl_elo.rds"))
