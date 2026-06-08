@@ -43,7 +43,7 @@ abstract: |
 key-points:
   - winning percentage and game attendance
 date: last-modified
-bibliography: references.bib
+bibliography: [pkgs.bib, references.bib]
 number-sections: true
 ---
 ```{r}
@@ -51,7 +51,26 @@ number-sections: true
 library(tidyverse)
 library(knitr)
 library(gt)
+
+pkg <- function(x, ...) {
+  if (knitr::is_html_output()) {
+    paste0("**", x, "** [@R-", x, "]")
+  } else {
+    # isn't working:
+#    https://github.com/beanumber/datascience2/issues/7
+#    paste0(r"(\pkg{)", x, r"(\})")
+    paste0("**", x, "**")
+  }
+}
 ```
+
+```{r}
+#| include: false
+manual <- c("ggplot2", "tidycensus")
+pkgs <- unique(c(manual, .packages()))
+knitr::write_bib(pkgs, file = "pkgs.bib")
+```
+
 
 ```{r}
 wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
@@ -332,7 +351,7 @@ As time-related control variables, we include the the season ($\tau_1$), the mon
 To control for city-related effects, we also include the team name ($\phi_1$), as well as the median income ($\phi_2$, in thousands of USD) and population ($\phi_3$, in millions) of the home city[^median].
 Finally, we include an indicator based on whether Caitlin Clark played more than 0 minutes in the game ($\chi$). 
 
-[^median]: Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), we chose to use the median of the population and median income across all of the available years of data as a constant value. While this does mean that the growth in cities like Phoenix or Las Vegas is ignored, we doubt this will meaningfully affect our results, especially since the team fixed effect should capture some of that variability. 
+[^median]: The data for the population and the median income of cities comes from the American Community Survey, access to which was provided in R by the `r pkg("tidycensus")` package. Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), we chose to use the median of the population and median income across all of the available years of data as a constant value. While this does mean that the population growth in cities like Phoenix or Las Vegas is ignored, we doubt this will meaningfully affect our results, especially since the team fixed effect should capture some of that variability. 
 
 ### Interaction
 
@@ -344,9 +363,12 @@ To capture this, we include an interaction term between our measures of fan enga
 Like @CoatesHumphreysZhou2014, we model the natural logarithm of attendance. 
 
 Our general regression model for attendance is:
-$$
-  \ln{y} = \beta_0^{(k)} + \beta_1^{(k)} f_k + \underbrace{\beta_2^{(k)} \tau_1 + \beta_3^{(k)} \tau_2 + \beta_4^{(k)} \tau_3}_{\text{time-related}} + \underbrace{\beta_5^{(k)} \phi_1 + \beta_6^{(k)} \phi_2 + \beta_7^{(k)} \phi_3}_{\text{ city-related }} + \beta_8^{(k)} \chi + \underbrace{\beta_9^{(k)} f_k \tau_1}_{\text{interaction}} + \epsilon \,,
-$$
+\begin{align*}
+  \ln{y} &= \beta_0^{(k)} + \underbrace{\beta_1^{(k)} f_k}_{\text{fan engagement}} \\
+    &+ \underbrace{\beta_2^{(k)} \tau_1 + \beta_3^{(k)} \tau_2 + \beta_4^{(k)} \tau_3}_{\text{time-related}} + \underbrace{\beta_5^{(k)} \phi_1 + \beta_6^{(k)} \phi_2 + \beta_7^{(k)} \phi_3}_{\text{ city-related }} \\
+    &+ \underbrace{\beta_8^{(k)} \chi}_{\text{Caitlin Clark}} + \underbrace{\beta_9^{(k)} f_k \tau_1}_{\text{interaction}} + \epsilon \\
+    &= \mathbf{X} \mathbf{\beta}^{(k)} + \epsilon \,,
+\end{align*}
 where $k \in \{1, 2, 3\}$, and $\beta_j^{(k)} \in \mathbb{R}$ for $j = \{0, 1, 6, 7, 8\}$, while the other $\beta_j^{(k)}$ coefficients are vectors of length equal to the number of factor levels in their corresponding categorical explanatory variable. 
 Most notably $\beta_2^{(k)}$ and $\beta_9^{(k)}$ have `r length(levels(factor(wnba_gl$season_id)))` values (corresponding to each season after 1997) and $\beta_5^{(k)}$ has `r length(levels(factor(wnba_gl$name_current)))` values (corresponding to each team). 
 Only current WNBA franchises are included in the regression model. 
@@ -358,6 +380,8 @@ We also excluded all data from the 2020 and 2021 seasons, since there were no fa
 ### Model formulation for percentage of arena capacity {#sec-mod-cap}
 
 We fit the same set of models with $\gamma$ as the response, but the in Tobit framework. 
+
+
 
 
 ## Results
@@ -520,7 +544,7 @@ mod_pct_coefs |>
   ) |>
   arrange(term, model) |>
   janitor::clean_names(case = "title") |>
-  knitr::kable()
+  knitr::kable(digits = 3)
 ```
 
 @tbl-glance2 shows the model fit metrics for the percentage of arena capacity models. 
