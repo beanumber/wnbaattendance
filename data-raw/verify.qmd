@@ -357,4 +357,10 @@ ggplot(slopes_data, aes(x = season_id, y = estimate, color = term, fill = term, 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-- buckets for arena capacity to not need tobit function
+```{r}
+library(dplyr)
+
+over_capacity <- wnba_gl |>
+  filter(attendance > arena_capacity)|>
+  select(season_id, team_name, game_date, matchup, arena, arena_capacity, attendance)
+```
