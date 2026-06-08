@@ -323,8 +323,8 @@ As noted in @sec-intro, there are multiple notions of what drives fan engagement
 Each of these notions can be captured by a simple bivariate function of the corresponding strengths of the teams ($f_k(\hat{\theta}_i(t), \hat{\theta}_i(t))$). 
 
 - Quality of play: fans may wish to attend a game in person if the quality of play is high. We model this as the sum of the Elo rating of the two teams ($f_1(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{\theta}_i(t) + \hat{\theta}_j(t)$)
-- Loss aversion: fans may wish to attend a game to see their team (the home team) win. We model this using the estimated home win probability function above ($f_2(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{p}_{ij}(t)$)
-- Uncertainty of outcome hypothesis: fans may wish to attend a game for which the outcome is unclear. We model this as ($f_3(\hat{\theta}_i(t), \hat{\theta}_i(t)) = |\hat{\theta}_i(t) - \hat{\theta}_j(t)|$)
+- Uncertainty of outcome hypothesis: fans may wish to attend a game for which the outcome is unclear. We model this as ($f_2(\hat{\theta}_i(t), \hat{\theta}_i(t)) = |\hat{\theta}_i(t) - \hat{\theta}_j(t)|$)
+- Loss aversion: fans may wish to attend a game to see their team (the home team) win. We model this using the estimated home win probability function above ($f_3(\hat{\theta}_i(t), \hat{\theta}_i(t)) = \hat{p}_{ij}(t)$)
 
 ### Control variables {#sec-control}
 
@@ -398,6 +398,11 @@ mod_attend_coefs <- mod_attend |>
 
 mod_attend_coefs |>
   filter_out(str_detect(term, "factor|name_current")) |>
+  mutate(
+    term = ifelse(str_detect(term, "I\\("), paste0(model, ": fan engagment"), term),
+    term = ifelse(str_detect(term, "is_cc"), "Caitlin Clark", term),
+    term = str_to_title(str_replace_all(term, "_", " "))
+  ) |>
   arrange(term, model) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
@@ -406,21 +411,8 @@ mod_attend_coefs |>
 Consider first the strong evidence for the Caitlin Clark effect. 
 Even for the smallest coefficient in @tbl-coefs, the expected attendance nearly doubles (i.e., is multiplied by $\exp(0.653)$ = `r mod_attend_coefs |> filter(term == "is_cc") |> select(estimate) |> min() |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
 
-Conversely, the evidence for the quality of play and uncertainty of outcome hypotheses is weak, with those coefficients barely moving the needle. 
-A 10 percentage point increase in the probability of the home team winning is associated with a modest `r round(100 * (exp(0.422/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
-
-```{r}
-#| label: tbl-anova
-#| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
-mod_attend |>
-  map(anova) |>
-  map(broom::tidy) |>
-  bind_rows(.id = "model") |>
-  filter_out(str_detect(term, "Residuals")) |>
-  arrange(df, term, model) |>
-  janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
-```
+Conversely, the evidence for the quality of play ($f_1$) and uncertainty of outcome ($f_2$) hypotheses is weak, with those coefficients barely moving the needle. 
+For the loss aversion hypothesis, a 10 percentage point increase in the probability of the home team winning is associated with a modest `r round(100 * (exp(0.422/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
 
 @tbl-glance characterizes the model fits. 
 We can see that while all models achieve a similar fit, models $f_1$ (corresponding to the quality of play hypothesis) and $f_3$ (corresponding to the home win probability) are slightly superior by most metrics. 
@@ -520,7 +512,14 @@ mod_pct_coefs <- map2(mod_pct, vcov_pct, lmtest::coeftest) |>
   bind_rows(.id = "model") 
 
 mod_pct_coefs |>
-  filter_out(str_detect(term, "factor|name")) |>
+  filter_out(str_detect(term, "factor|name")) |>  
+  mutate(
+    term = ifelse(str_detect(term, "I\\("), paste0(model, ": fan engagment"), term),
+    term = ifelse(str_detect(term, "is_cc"), "Caitlin Clark", term),
+    term = str_to_title(str_replace_all(term, "_", " "))
+  ) |>
+  arrange(term, model) |>
+  janitor::clean_names(case = "title") |>
   knitr::kable()
 ```
 
@@ -536,19 +535,6 @@ mod_pct |>
 ```
 
 @tbl-anova2 shows the analysis of variance for the percentage of arena capacity models. 
-
-```{r}
-#| label: tbl-anova2
-#| tbl-cap: "Analysis of variance for terms in models for percentage of arena capacity. "
-mod_pct |>
-  map(anova) |>
-  map(broom::tidy) |>
-  bind_rows(.id = "model") |>
-  filter_out(str_detect(term, "NULL")) |>
-  arrange(df, term, model) |>
-  janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
-```
 
 @fig-season-coefs2 shows that...
 
@@ -612,6 +598,37 @@ We also considered fitting a Beta regression model with a logit link function, a
 :::
 
 ## Appendix {.appendix}
+
+### ANOVA tables
+
+
+```{r}
+#| label: tbl-anova
+#| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
+mod_attend |>
+  map(anova) |>
+  map(broom::tidy) |>
+  bind_rows(.id = "model") |>
+  filter_out(str_detect(term, "Residuals")) |>
+  arrange(df, term, model) |>
+  janitor::clean_names(case = "title") |>
+  knitr::kable(digits = 3)
+```
+
+
+```{r}
+#| label: tbl-anova2
+#| tbl-cap: "Analysis of variance for terms in models for percentage of arena capacity. "
+mod_pct |>
+  map(anova) |>
+  map(broom::tidy) |>
+  bind_rows(.id = "model") |>
+  filter_out(str_detect(term, "NULL")) |>
+  arrange(df, term, model) |>
+  janitor::clean_names(case = "title") |>
+  knitr::kable(digits = 3)
+```
+
 
 ### Residual analysis of attendance models {#sec-resid-attend}
 
