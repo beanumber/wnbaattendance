@@ -35,6 +35,7 @@ jobs:
           packages:
             any::remotes
             any::broom
+            any::elo
             any::gt
             any::here
             any::janitor
