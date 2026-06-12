@@ -42,14 +42,20 @@ wnba_gl |>
 
 # Add Caitlin Clark indicator
 
-caitlin_clark <- read_rds(here::here("data/wnba_gamelogs_cc.rds")) |>
-  janitor::clean_names()
+specific_players <- read_rds(here::here("data/wnba_gamelogs_cc.rds")) |>
+  janitor::clean_names() |>
+  mutate(
+    cc = str_detect(player_name, "Caitlin") & min > 0,
+    aw = str_detect(player_name, "A'ja") & min > 0
+  ) |>
+  group_by(game_id) |>
+  summarize(
+    is_cc = any(cc),
+    is_aw = any(aw)
+  )
 
 wnba_gl <- wnba_gl |>
-  left_join(
-    caitlin_clark |> mutate(is_cc = min > 0) |> select(game_id, is_cc), 
-    by = join_by(game_id)
-  ) |>
+  left_join(specific_players, by = join_by(game_id)) |>
   mutate(is_cc = if_else(is.na(is_cc), 0, is_cc))
 
 
