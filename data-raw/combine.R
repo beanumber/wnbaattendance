@@ -56,7 +56,10 @@ specific_players <- read_rds(here::here("data/wnba_gamelogs_cc.rds")) |>
 
 wnba_gl <- wnba_gl |>
   left_join(specific_players, by = join_by(game_id)) |>
-  mutate(is_cc = if_else(is.na(is_cc), 0, is_cc))
+  mutate(
+    is_cc = if_else(is.na(is_cc), 0, is_cc),
+    is_aw = if_else(is.na(is_aw), 0, is_aw)
+  )
 
 
 
