@@ -391,7 +391,7 @@ Finally, we include an indicator based on whether Caitlin Clark played more than
 ### Interaction
 
 Testing our primary hypotheses requires analyzing how the relationship between attendance and fan engagement has changed over time. 
-To capture this, we include an interaction term between our measures of fan engagement ($f_k$) and season ($\tau_1$). 
+To capture these changes, we include an interaction term between our measures of fan engagement ($f_k$) and season ($\tau_1$). We also considered fitting a period-based model but ultimately decided against this approach. Defining periods by hand would require subjective decisions about the timing of structural breaks and would risk introducing researcher bias into the analysis. Instead, we allow the relationship between attendance and fan engagement to evolve season-by-season.
 
 ### Model formulation for attendance {#sec-mod-attend}
 
@@ -409,9 +409,6 @@ Most notably $\beta_2^{(k)}$ and $\beta_9^{(k)}$ have `r length(levels(factor(wn
 Only current WNBA franchises are included in the regression model. 
 We also excluded all data from the 2020 and 2021 seasons, since there were no fans allowed in all or parts of both seasons. 
 
-
-
-
 ### Model formulation for percentage of arena capacity {#sec-mod-cap}
 
 We fit the same set of models with $\gamma$ as the response, but because our response variable $\gamma$ is constrained between 0 and 1 and has significant mass at 1 exactly, we use the Papke-Wooldridge fractional response model [@papke1996econometric].
@@ -423,7 +420,6 @@ where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\math
 
 
 ## Results
-
 
 ```{r}
 f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + name_current + median_income + median_pop + is_cc"
@@ -598,7 +594,7 @@ mod_pct |>
 
 @tbl-anova2 shows the analysis of variance for the percentage of arena capacity models. 
 
-@fig-season-coefs2 shows that...
+@fig-season-coefs2 displays the estimated effects of our fan engagement measures on attendance relative to the 1997 reference season. Similar to the overall attendance trends, these effects generally remained below their 1997 levels for much of the league's history and only returned to comparable levels recently. In the most recent years of measurement, however, we see the league exceeding previously record-holding levels.
 
 ```{r}
 #| label: fig-season-coefs2
@@ -615,7 +611,7 @@ mod_pct_coefs |>
   theme_minimal(base_size = 10)
 ```
 
-@fig-season-slopes2 shows that...
+@fig-season-slopes2 shows that...??
 
 ```{r}
 #| label: fig-season-slopes2
@@ -639,6 +635,9 @@ mod_pct_coefs |>
   scale_y_continuous("Estimated Season Fixed Effect") +
   theme_minimal(base_size = 10)
 ```
+
+### Fan engagement and attendance over time
+
 
 ## Conclusion
 
