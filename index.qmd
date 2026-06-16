@@ -415,7 +415,29 @@ plot_capacity +
   scale_x_continuous("UOH: Absolute Difference in Elo rating")
 ```
 
+#### Rescaling
 
+@fig-rescaled shows the distribution of our fan engagement variables after rescaling. 
+
+```{r}
+#| label: fig-rescaled
+#| fig-cap: "Distribution of fan engagement variables after rescaling. "
+wnba_gl <- wnba_gl |>
+  mutate(
+    z_quality_of_play = (quality_of_play - mean(quality_of_play)) / sd(quality_of_play), 
+    z_uncertain_outcome = log(uncertain_outcome + 1) - mean(log(uncertain_outcome + 1)),
+    z_loss_aversion = (loss_aversion - mean(loss_aversion)) / sd(loss_aversion)
+  )
+
+wnba_gl |>
+  select(z_quality_of_play, z_uncertain_outcome, z_loss_aversion) |>
+  pivot_longer(cols = everything(), values_to = "value", names_to = "fan_engagement") |>
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(vars(fan_engagement), ncol = 1) + 
+  theme_minimal(base_size = 10) +
+  scale_x_continuous("Standard deviations above the mean")
+```
 
 
 ### Control variables {#sec-control}
@@ -465,7 +487,7 @@ where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\math
 
 ```{r}
 f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + factor(arena) + median_income + median_pop + is_cc + is_aw"
-f_exp <- c("(I(quality_of_play) + I(uncertain_outcome) + I(loss_aversion))")
+f_exp <- c("(I(z_quality_of_play) + I(z_uncertain_outcome) + I(z_loss_aversion))")
 
 mod_df <- wnba_gl |>
   filter(!season_id %in% c(2021), is_active) |>
@@ -493,7 +515,7 @@ Residual analysis for the attendance models are shown in @sec-resid-attend.
 #| label: tbl-coefs
 #| tbl-cap: "Fitted coefficients for scalar terms in models for the natural logarithm of attendance. "
 mod_attend_coefs <- mod_attend |>
-  map(broom::tidy) |>
+  map(broom::tidy, conf.int = TRUE) |>
   bind_rows(.id = "model") 
 
 min_cc <- mod_attend_coefs |>
@@ -521,6 +543,24 @@ The corresponding change in attendance for A'ja Wilson---by most accounts a bett
 Conversely, the evidence for the quality of play ($f_1$) and uncertainty of outcome ($f_2$) hypotheses is weak, with those coefficients barely moving the needle. 
 For the loss aversion hypothesis, a 10 percentage point increase in the probability of the home team winning is associated with a modest `r round(100 * (exp(0.422/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
 
+```{r}
+#| label: fig-attend-coefs
+#| fig-cap: "Relative magnitudes of coefficients in attendance model. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
+plot_attend_coefs <- mod_attend_coefs |>
+  filter_out(str_detect(term, "(arena)|:|Intercept|median")) |>
+  mutate(
+    hilite = str_detect(term, "is_cc|2025|uncertain")
+  ) |>
+  ggplot(aes(x = estimate, y = term, color = hilite)) +
+  geom_vline(xintercept = 0, linetype = 3) +
+  geom_point() +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high), width = 0.1) +
+  scale_x_continuous("Coefficient in Regression Model") +
+  scale_color_discrete(guide = "none")
+plot_attend_coefs
+```
+
+
 @tbl-glance characterizes the model fits. 
 We can see that while all models achieve a similar fit, models $f_1$ (corresponding to the quality of play hypothesis) and $f_3$ (corresponding to the home win probability) are slightly superior by most metrics. 
 
@@ -543,16 +583,18 @@ On the other hand, it seems unlikely that the league would have achieved record 
 ```{r}
 #| label: fig-season-coefs
 #| fig-cap: "Estimated season-level fixed effects for natural logarithm of attendance models. "
-mod_attend_coefs |>
+plot_attend_seasons <- mod_attend_coefs |>
   filter(str_detect(term, "season_id")) |>
   filter_out(str_detect(term, ":")) |>
   mutate(season_id = parse_number(str_sub(term, -4))) |>
   ggplot(aes(x = season_id, y = estimate, color = model)) +
   geom_hline(yintercept = 0, linetype = 3) +
   geom_line() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
   scale_x_continuous("Season") +
   scale_y_continuous("Estimated Season Fixed Effect") +
   theme_minimal(base_size = 10)
+plot_attend_seasons
 ```
 
 @fig-season-slopes shows a general increase in the slope of the interaction terms in all three models in recent years. 
@@ -565,24 +607,21 @@ The changes in slope associated with models $f_2$ and $f_3$ are now positive, al
 ```{r}
 #| label: fig-season-slopes
 #| fig-cap: "Estimated season-level changes in slopes for natural logarithm of attendance models. "
-mod_attend_coefs |>
+plot_attend_slopes <- mod_attend_coefs |>
   filter(str_detect(term, ":")) |>
   mutate(
     season_id = parse_number(str_sub(term, -4)),
-    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
-#    scaled_estimate = case_when(
-#      model == "f1" ~ estimate * (mean(wnba_gl$quality_of_play)),
-#      model == "f2" ~ estimate * (mean(wnba_gl$uncertain_outcome)),
-#      model == "f3" ~ estimate * (mean(wnba_gl$loss_aversion))
-#    )
+    variable = str_extract(term, "z_.+:")
   ) |>
-  ggplot(aes(x = season_id, y = estimate, color = model)) +
+  ggplot(aes(x = season_id, y = estimate, color = variable)) +
   geom_hline(yintercept = 0, linetype = 3) +
   geom_line() +
+#  geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
   geom_smooth(se = 0) +
   scale_x_continuous("Season") +
   scale_y_continuous("Estimated Season Fixed Effect") +
   theme_minimal(base_size = 10)
+plot_attend_slopes
 ```
 
 ### Percentage of Arena Capacity
@@ -611,7 +650,7 @@ vcov_pct <- mod_pct |>
 #| label: tbl-coefs2
 #| tbl-cap: "Table of coefficients from percentage of arena capacity models. "
 mod_pct_coefs <- map2(mod_pct, vcov_pct, lmtest::coeftest) |>
-  map(broom::tidy) |>
+  map(broom::tidy, conf.int = TRUE) |>
   bind_rows(.id = "model") 
 
 mod_pct_coefs |>
@@ -626,6 +665,20 @@ mod_pct_coefs |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
+
+@fig-pct-coefs shows that...
+
+```{r}
+#| label: fig-pct-coefs
+#| fig-cap: "Relative magnitudes of coefficients in attendance model. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
+plot_attend_coefs +
+  mod_pct_coefs |>
+  filter_out(str_detect(term, "(arena)|:|Intercept|median")) |>
+  mutate(
+    hilite = str_detect(term, "is_cc|2025|uncertain")
+  )
+```
+
 
 @tbl-glance2 shows the model fit metrics for the percentage of arena capacity models. 
 
@@ -647,16 +700,11 @@ mod_pct |>
 ```{r}
 #| label: fig-season-coefs2
 #| fig-cap: "Estimated season-level fixed effects for percentage of arena capacity models. "
-mod_pct_coefs |>
+plot_attend_seasons +
+  mod_pct_coefs |>
   filter(str_detect(term, "season_id")) |>
   filter_out(str_detect(term, ":")) |>
-  mutate(season_id = parse_number(str_sub(term, -4))) |>
-  ggplot(aes(x = season_id, y = estimate, color = model)) +
-  geom_hline(yintercept = 0, linetype = 3) +
-  geom_line() +
-  scale_x_continuous("Season") +
-  scale_y_continuous("Estimated Season Fixed Effect") +
-  theme_minimal(base_size = 10)
+  mutate(season_id = parse_number(str_sub(term, -4)))
 ```
 
 @fig-season-slopes2 shows that...
@@ -664,24 +712,13 @@ mod_pct_coefs |>
 ```{r}
 #| label: fig-season-slopes2
 #| fig-cap: "Estimated season-level changes in slopes for percentage of arena capacity models. "
-mod_pct_coefs |>
+plot_attend_slopes +
+  mod_pct_coefs |>
   filter(str_detect(term, ":")) |>
   mutate(
     season_id = parse_number(str_sub(term, -4)),
-    type = ifelse(str_detect(term, ":"), "interaction", "linear"),
-    scaled_estimate = case_when(
-      model == "f1" ~ estimate * (mean(wnba_gl$quality_of_play)),
-      model == "f2" ~ estimate * (mean(wnba_gl$uncertain_outcome)),
-      model == "f3" ~ estimate * (mean(wnba_gl$loss_aversion))
-    )
-  ) |>
-  ggplot(aes(x = season_id, y = scaled_estimate, color = model)) +
-  geom_hline(yintercept = 0, linetype = 3) +
-  geom_line() +
-  geom_smooth(se = 0) +
-  scale_x_continuous("Season") +
-  scale_y_continuous("Estimated Season Fixed Effect") +
-  theme_minimal(base_size = 10)
+    variable = str_extract(term, "z_.+:")
+  ) 
 ```
 
 ## Conclusion
