@@ -51,8 +51,15 @@ jobs:
         with:
           tinytex: true
 
-      - name: Render Quarto Project
-        uses: quarto-dev/quarto-actions/publish@v2
+      # 1. For Pull Requests: Just test-render the project to catch compilation/LaTeX errors
+      - name: Test Render Quarto Project (PR only)
+        if: github.event_name == 'pull_request'
+        uses: quarto-dev/quarto-actions/render@v2
+
+      # 2. For Pushes to Main/Master: Render AND push live to gh-pages branch
+      - name: Render and Publish Quarto Project (Main only)
+        if: github.event_name == 'push'
+        uses: quarto-dev/quarto-actions/publish@v2        
         with:
           target: gh-pages
 #          to: pdf
