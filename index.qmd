@@ -80,9 +80,14 @@ wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
     median_pop = median_pop / 1000000,
     pct_capacity = attendance / pmax(max(attendance), arena_capacity),
     pct_capacity_safe = (pct_capacity * (2 * (n() - 1)) + 0.5) / (2 * n()),
-    quality_of_play = elo_home_pregame + elo_away_pregame - 3000,
+    is_sellout = pct_capacity > 0.95,
+    quality_of_play = elo_home_pregame * elo_away_pregame,
     uncertain_outcome = abs(elo_home_pregame - elo_away_pregame),
-    loss_aversion = elo_home_win_prob - 0.5,
+    loss_aversion = elo_home_win_prob^2,
+    z_quality_of_play = (quality_of_play - mean(quality_of_play)) / sd(quality_of_play), 
+    z_uncertain_outcome = log(uncertain_outcome + 1) - mean(log(uncertain_outcome + 1)),
+    z_loss_aversion = (loss_aversion - mean(loss_aversion)) / sd(loss_aversion),
+    zzz_sum_all_three = z_loss_aversion + z_quality_of_play - z_uncertain_outcome,
     arena_size = case_when(
       arena_capacity >= 16000 ~ "arena_large",
       arena_capacity >= 11000 ~ "arena_medium",
@@ -324,16 +329,19 @@ Since we know the arena in which the game took place and the capacity of that ar
 ### Response variables
 
 In @fig-attendance-year, we observe the relationship between attendance and estimated home win probability. 
-In most years, the slope appears to be positive. 
+We add a simple quadratic regression line to reflect the quadratic relationship posited by @CoatesHumphreysZhou2014.
+In most years, the slope appears to be positive and the curvature concave. 
 
 ```{r}
 #| label: fig-attendance-year
-#| fig-cap: "WNBA attendance by season, against estimated home win probability. We note that in most years, the slope of the association appears to be positive. "
+#| fig-cap: "WNBA attendance by season, against estimated home win probability. We note that in most years, the slope of the association appears to be positive and the curvature concave. "
 plot_attend <- ggplot(wnba_gl, aes(x = elo_home_win_prob, y = attendance)) +
+  geom_vline(aes(xintercept = mean(elo_home_win_prob)), linetype = 3) +
+#  geom_hline(aes(yintercept = mean(attendance)), linetype = 3) +
   geom_point(aes(color = factor(is_cc | is_aw))) +
-  geom_smooth(method = "lm", se = 0, color = "black") +
+  geom_smooth(method = "lm", formula = y ~ I(x^2), se = 0, color = "black") +
   facet_wrap(vars(season_id)) +
-  scale_x_continuous("Estimated Home Win Probability") +
+  scale_x_continuous("Estimated Home Win Probability", limits = c(0, 1)) +
   scale_color_discrete(name = "Clark/Wilson") +
   theme_minimal(base_size = 10)
 plot_attend +
@@ -404,6 +412,7 @@ plot_capacity +
   scale_x_continuous("UOH: Absolute Difference in Elo rating")
 ```
 
+
 #### Rescaling
 
 @fig-rescaled shows the distribution of our fan engagement variables after rescaling. 
@@ -411,15 +420,8 @@ plot_capacity +
 ```{r}
 #| label: fig-rescaled
 #| fig-cap: "Distribution of fan engagement variables after rescaling. "
-wnba_gl <- wnba_gl |>
-  mutate(
-    z_quality_of_play = (quality_of_play - mean(quality_of_play)) / sd(quality_of_play), 
-    z_uncertain_outcome = log(uncertain_outcome + 1) - mean(log(uncertain_outcome + 1)),
-    z_loss_aversion = (loss_aversion - mean(loss_aversion)) / sd(loss_aversion)
-  )
-
 wnba_gl |>
-  select(z_quality_of_play, z_uncertain_outcome, z_loss_aversion) |>
+  select(contains("z_")) |>
   pivot_longer(cols = everything(), values_to = "value", names_to = "fan_engagement") |>
   ggplot(aes(x = value)) +
   geom_histogram() +
@@ -427,6 +429,40 @@ wnba_gl |>
   theme_minimal(base_size = 10) +
   scale_x_continuous("Standard deviations above the mean")
 ```
+
+
+We note that @tbl-cor shows that our three fan engagement variables are largely uncorrelated. 
+
+```{r}
+#| label: tbl-cor
+#| tbl-cap: "Correlations among fan engagment variables. "
+wnba_gl |>
+  select(contains("z_")) |>
+  cor() |>
+  knitr::kable(digits = 3)
+```
+
+
+
+```{r}
+wnba_gl |>
+  select(contains("pregame"), contains("z_")) |>
+  pivot_longer(cols = !contains("pregame"), names_to = "variable", values_to = "value") |>
+  ggplot(aes(x = elo_home_pregame, y = elo_away_pregame, color = value)) +
+  geom_point() +
+  facet_wrap(vars(variable)) +
+  scale_color_viridis_c()
+```
+
+
+```{r}
+plot_attend +
+  aes(x = zzz_sum_all_three) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous()
+```
+
+
 
 ### Control variables {#sec-control}
 
@@ -470,7 +506,7 @@ where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\math
 ## Results
 
 ```{r}
-f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + factor(arena) + median_income + median_pop + is_cc + is_aw"
+f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + factor(arena) + median_income + median_pop + is_cc + is_aw + is_sellout"
 f_exp <- c("(I(z_quality_of_play) + I(z_uncertain_outcome) + I(z_loss_aversion))")
 
 mod_df <- wnba_gl |>
@@ -486,6 +522,15 @@ mod_attend <- f_exp |>
 #mod_attend |>
 #  map(summary)
 ```
+
+
+```{r}
+#| label: coates
+mod_coates <- lm(log(attendance) ~ elo_home_pregame + elo_away_pregame + I(elo_home_pregame^2) * I(elo_away_pregame^2) + factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + factor(arena) + median_income + median_pop + is_cc + is_aw, data = mod_df)
+summary(mod_coates)
+anova(mod_coates)
+```
+
 
 ### Attendance {#sec-attend}
 
