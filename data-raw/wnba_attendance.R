@@ -49,4 +49,17 @@ wnba_attendance |>
   count() |>
   arrange(desc(n))
 
+wnba_attendance |>
+  group_by(cbsa_id) |>
+  summarize(
+    num_games = n(),
+    num_arenas = n_distinct(arena),
+    arenas = paste(unique(arena), collapse = "|")
+  ) |>
+  arrange(desc(num_arenas))
+
+wnba_attendance |>
+  mutate(pct_capacity = attendance / arena_capacity) |>
+  summary()
+
 write_rds(wnba_attendance, file = "data/wnba_attendance.rds", compress = "xz")
