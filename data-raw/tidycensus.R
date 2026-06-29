@@ -8,7 +8,7 @@ library(tidycensus)
 # You can find these using load_variables(2022, "acs1", cache = TRUE)
 
 v17 <- load_variables(2022, "acs1", cache = TRUE)
-View(v17)
+# View(v17)
 
 my_vars <- c(
   total_pop = "B01003_001",
@@ -53,12 +53,6 @@ library(cansim)
 income_table <- get_cansim("11-10-0190-01") |>
   filter(str_detect(GEO, "Vancouver"))
 
-# 2. Filter for Vancouver CMA and extract your target variables
-
-can_pop <- pop_table |>
-  filter(`Age group` == "All ages", Sex == "Both sexes") |>
-  select(year = REF_DATE, GEOID = GeoUID, NAME = GEO, total_pop = VALUE)
-
 cbsas_can <- income_table |>
   filter(
     str_detect(`Income concept`, "persons|Median total income"),
@@ -85,7 +79,7 @@ cbsas_all <- cbsas_usa |>
 
 ###############################
 
-cbsas <- expand_grid(year = 2005:2025, GEOID = unique(cbsas_all$GEOID)) |>
+cbsas <- expand_grid(year = 1997:2025, GEOID = unique(cbsas_all$GEOID)) |>
   left_join(cbsas_all, by = join_by(year, GEOID))
 
 ######## Imputation
@@ -95,9 +89,10 @@ cbsas <- cbsas |>
   mutate(
     total_pop = na.approx(total_pop, na.rm = FALSE),
     median_income = na.approx(median_income, na.rm = FALSE),
-    total_pop = na.locf(total_pop, na.rm = FALSE),
     median_income = na.locf(median_income, na.rm = FALSE),
-  )
+  ) |>
+  fill(total_pop, median_income, NAME, .direction = "downup") |>
+  ungroup()
 
 cbsas |>
   filter(is.na(total_pop))
