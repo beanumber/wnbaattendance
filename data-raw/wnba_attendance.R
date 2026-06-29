@@ -58,8 +58,19 @@ wnba_attendance |>
   ) |>
   arrange(desc(num_arenas))
 
-wnba_attendance |>
-  mutate(pct_capacity = attendance / arena_capacity) |>
-  summary()
+# Gemini consolidated
+wnba_attendance <- wnba_attendance |>
+  mutate(arena_consolidated = case_when(
+    arena %in% c("US Airways Center", "Talking Stick Resort Arena", "Phoenix Suns Arena", "PHX Arena", "Footprint Center") ~ "Footprint Center",
+    arena %in% c("Staples Center", "STAPLES Center", "Crypto.com Arena") ~ "Crypto.com Arena",
+    arena %in% c("Conseco Fieldhouse", "Bankers Life Fieldhouse", "Gainbridge Fieldhouse") ~ "Gainbridge Fieldhouse",
+    arena %in% c("KeyArena", "Climate Pledge Arena") ~ "Climate Pledge Arena",
+    arena %in% c("Verizon Center", "Capital One Arena") ~ "Capital One Arena",
+    arena %in% c("Time Warner Cable Arena", "Spectrum Center") ~ "Spectrum Center",
+    arena %in% c("Philips Arena", "State Farm Arena") ~ "State Farm Arena",
+    arena %in% c("Mandalay Bay Events Center", "Michelob ULTRA Arena") ~ "Michelob ULTRA Arena",
+    arena %in% c("CareFirst Arena", "CFG Bank Arena") ~ "CFG Bank Arena",
+    TRUE ~ arena
+  ))
 
 write_rds(wnba_attendance, file = "data/wnba_attendance.rds", compress = "xz")
