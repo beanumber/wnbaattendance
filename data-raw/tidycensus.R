@@ -50,42 +50,57 @@ library(cansim)
 
 # 1. Fetch the relevant table from the StatCan API
 # This returns an already tidied data frame
-income_table <- get_cansim("11-10-0239-01")
+income_table <- get_cansim("11-10-0190-01") |>
+  filter(str_detect(GEO, "Vancouver"))
 
 # 2. Filter for Vancouver CMA and extract your target variables
-vancouver_clean <- income_table |>
+
+can_pop <- pop_table |>
+  filter(`Age group` == "All ages", Sex == "Both sexes") |>
+  select(year = REF_DATE, GEOID = GeoUID, NAME = GEO, total_pop = VALUE)
+
+cbsas_can <- income_table |>
   filter(
-    GEO == "Vancouver, British Columbia"
-    Gender == "Total - Gender"
+    str_detect(`Income concept`, "persons|Median total income"),
+    `Hierarchy for Economic family type` == 1
   ) |>
-  filter(
-    `Income concept` == "Median family total income" | 
-      Characteristics == "Total population"
-  ) |>
-  select(
-    year = REF_DATE, 
-    metric = Characteristics, 
-    concept = `Income concept`, 
-    value = VALUE
+  select(year = REF_DATE, GEOID = GeoUID, NAME = GEO, variable = `Income concept`, VALUE) |>
+  pivot_wider(names_from = variable, values_from = VALUE) |>
+  rename(total_pop = `Number of persons`, median_income = `Median total income`) |>
+  mutate(
+    year = parse_number(year),
+    GEOID = parse_number(GEOID),
+    NAME = as.character(NAME)
   )
 
-print(head(vancouver_clean))
 
 ######################## 
 
 
 cbsas_all <- cbsas_usa |>
   # Vancouver, CA
-  bind_rows(tibble(year = 2023, GEOID = 99999, NAME = "Vancouver, CA", median_income = 65500, total_pop = 2391252))
+  bind_rows(cbsas_can)
 
 
 
 ###############################
 
-cbsas <- expand_grid(year = 2005:2025, cbsa_id = unique(cbsas_all$GEOID)) |>
-  left_join(cbsas_all, by = join_by(year, cbsa_id == GEOID))
+cbsas <- expand_grid(year = 2005:2025, GEOID = unique(cbsas_all$GEOID)) |>
+  left_join(cbsas_all, by = join_by(year, GEOID))
 
+######## Imputation
 
+cbsas <- cbsas |>
+  group_by(GEOID) |>
+  mutate(
+    total_pop = na.approx(total_pop, na.rm = FALSE),
+    median_income = na.approx(median_income, na.rm = FALSE),
+    total_pop = na.locf(total_pop, na.rm = FALSE),
+    median_income = na.locf(median_income, na.rm = FALSE),
+  )
+
+cbsas |>
+  filter(is.na(total_pop))
 
 
 write_rds(cbsas, file = "data/cbsas.rds", compress = "xz")
