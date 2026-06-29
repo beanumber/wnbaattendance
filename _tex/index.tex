@@ -206,7 +206,7 @@
 
 \title{Winning and Attendance in the WNBA}
 \author{Gabriela Eastwood \and Benjamin S. Baumer \and Andrew Zimbalist}
-\date{2026-06-16}
+\date{2026-06-29}
 \begin{document}
 \maketitle
 \begin{abstract}
@@ -442,13 +442,13 @@ Second, we collected game-level performance data from the
 \textbf{wehoop} R package (Gilani and Hutchinson 2021), which uses the
 official WNBA API. The game-level performance data include These data
 include the final score of the game. We also used the \textbf{wehoop}
-package to identify whether Caitlin Clark played more than 0 minutes in
-the game.
+package to identify whether Caitlin Clark and/or A'ja Wilson played more
+than 0 minutes in the game.
 
 Table~\ref{tbl-attendance} shows a sample of the data. While many other
 variables are omitted from the table, we note that the attendance, the
-teams playing in the game, the outcome, the arena, and whether Caitlin
-Clark played in the game, are recorded.
+teams playing in the game, the outcome, the arena, and whether Clark or
+Wilson played in the game, are recorded.
 
 \begin{table}
 
@@ -461,26 +461,26 @@ Clark played in the game, are recorded.
 {\fontsize{14}{17}\selectfont  Sample of game-level records\fontsize{8}{10}\selectfont }
 } 
 \fontsize{8.0pt}{10.0pt}\selectfont
-\begin{tabular*}{1\linewidth}{@{\extracolsep{\fill}}rlllrrr}
+\begin{tabular*}{1\linewidth}{@{\extracolsep{\fill}}rlllrrrr}
 \toprule
-Game Date & Home & Away & Arena & Attendance & Plus Minus & Clark \\ 
+Game Date & Home & Away & Arena & Attendance & Plus Minus & Clark & Wilson \\ 
 \midrule\addlinespace[2.5pt]
-10445 & DET & HOU & Palace of Auburn Hills & 15,338 & -4 & 0 \\ 
-11478 & LAS & CLE & Staples Center & 11,445 & 8 & 0 \\ 
-20265 & IND & LAS & Gainbridge Fieldhouse & 17,274 & -10 & 0 \\ 
-10092 & UTA & NYL & EnergySolutions Arena & 8,234 & 6 & 0 \\ 
-11478 & MIA & IND & AmericanAirlines Arena & 6,462 & 2 & 0 \\ 
-10799 & HOU & DET & Compaq Center & 11,105 & 39 & 0 \\ 
-12924 & SAN & HOU & AT\&T Center & 9,369 & -8 & 0 \\ 
-20235 & CON & DAL & Mohegan Sun Arena & 8,910 & -22 & 0 \\ 
-13729 & CON & IND & Mohegan Sun Arena & 9,493 & 25 & 0 \\ 
-14814 & SAN & CHI & AT\&T Center & 8,999 & -3 & 0 \\ 
+14402 & NYL & CON & Madison Square Garden & 13,397 & -9 & 0 & 0 \\ 
+12573 & WAS & CON & Verizon Center & 13,246 & -9 & 0 & 0 \\ 
+14461 & IND & CHI & Conseco Fieldhouse & 6,581 & 9 & 0 & 0 \\ 
+12977 & IND & CON & Conseco Fieldhouse & 8,799 & 11 & 0 & 0 \\ 
+11134 & ORL & HOU & Amway Arena & 7,427 & -12 & 0 & 0 \\ 
+17396 & MIN & IND & Xcel Energy Center & 9,621 & 59 & 0 & 0 \\ 
+12220 & NYL & SAC & Madison Square Garden & 10,711 & 9 & 0 & 0 \\ 
+11169 & DET & CLE & Palace of Auburn Hills & 4,857 & -11 & 0 & 0 \\ 
+16971 & CON & SAN & Mohegan Sun Arena & 5,596 & 3 & 0 & 0 \\ 
+16611 & SAN & PHO & Freeman Coliseum & 3,102 & 5 & 0 & 0 \\ 
 \bottomrule
 \end{tabular*}
 
 Sample of Game-level WNBA data. The data indicates (among other things)
 which teams were playing, who won, the arena, the attendance, and
-whether Caitlin Clark played in the game.
+whether Caitlin Clark and/or A'ja Wilson played in the game.
 
 }
 
@@ -525,7 +525,35 @@ league's overall attendance trends is one of our goals.
 
 \caption{\label{fig-boxplots}Distribution of WNBA game attendance by
 season. Note that the vertical axis has a logarithmic scale. Caitlin
-Clark's games in 2024-2025 are separated by color.}
+Clark and/or A'ja Wilson's games are separated by color.}
+
+\end{figure}%
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+Figure~\ref{fig-boxplots-capacity} shows the distribution of attendance
+as a percentage of the arena's capacity. Although we recorded reported
+arena capacities, those capacities change over time, and some games had
+attendance that exceeded the arena's reported capacity. Instead, we
+computed the percentage as a ratio of the attendance to the larger of
+the reported capacity, or the maximum recorded attendance at that arena
+in the sample.\footnote{These modifications reduced the number of 1's in
+  the sample, which was useful mathematically during modeling.}
+
+\protect\phantomsection\label{cell-fig-boxplots-capacity}
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-boxplots-capacity-1.pdf}}
+
+}
+
+\caption{\label{fig-boxplots-capacity}Distribution of WNBA game
+attendance as a percentage of arena capacity by season. Caitlin Clark's
+games in 2024-2025 are separated by color.}
 
 \end{figure}%
 
@@ -663,15 +691,13 @@ Since we know the arena in which the game took place and the capacity of
 that arena, we developed an alternative response variable- percentage of
 arena capacity filled (\(\gamma\)).
 
-\textsubscript{Source:
-\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
-Notebook}}
-
 \subsection{Response variables}\label{response-variables}
 
 In Figure~\ref{fig-attendance-year}, we observe the relationship between
-attendance and estimated home win probability. In most years, the slope
-appears to be positive.
+attendance and estimated home win probability. We add a simple quadratic
+regression line to reflect the quadratic relationship posited by Coates
+et al. (2014). In most years, the slope appears to be positive and the
+curvature concave.
 
 \protect\phantomsection\label{cell-fig-attendance-year}
 \begin{figure}[H]
@@ -684,7 +710,7 @@ appears to be positive.
 
 \caption{\label{fig-attendance-year}WNBA attendance by season, against
 estimated home win probability. We note that in most years, the slope of
-the association appears to be positive.}
+the association appears to be positive and the curvature concave.}
 
 \end{figure}%
 
@@ -761,7 +787,13 @@ The distribution of attendance with respect to \(f_1\) and \(f_2\) are
 shown in Figure~\ref{fig-attend-f1} and Figure~\ref{fig-attend-f2},
 respectively, with the corresponding plots for percentage of arena
 capacity shown in Figure~\ref{fig-capacity-f1} and
-Figure~\ref{fig-capacity-f2}.
+Figure~\ref{fig-capacity-f2}. Note that because our uncertainty of
+outcome metric is define as the absolute difference in Elo ratings
+between the two teams. Larger values indicate a less competitive matchup
+and therefore lower outcome uncertainty. If the uncertainty of outcome
+hypothesis is true, we would expect a negative relationship between this
+variable and attendance, as more competitive games should attract larger
+crowds.
 
 \protect\phantomsection\label{cell-fig-attend-f1}
 \begin{figure}[H]
@@ -772,7 +804,9 @@ Figure~\ref{fig-capacity-f2}.
 
 }
 
-\caption{\label{fig-attend-f1}asd}
+\caption{\label{fig-attend-f1}WNBA game attendance by season, against
+quality of play (game-time sum of Elo ratings - 3000). Higher values
+indicate matchups between stronger teams.}
 
 \end{figure}%
 
@@ -789,7 +823,9 @@ Notebook}}
 
 }
 
-\caption{\label{fig-attend-f2}asd}
+\caption{\label{fig-attend-f2}WNBA game attendance by season, against
+uncertainty of outcome. Games are more competetive when UOH is closer to
+zero.}
 
 \end{figure}%
 
@@ -826,6 +862,85 @@ Notebook}}
 \caption{\label{fig-capacity-f2}asd}
 
 \end{figure}%
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+\subsubsection{Rescaling}\label{rescaling}
+
+Figure~\ref{fig-rescaled} shows the distribution of our fan engagement
+variables after rescaling.
+
+\protect\phantomsection\label{cell-fig-rescaled}
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-rescaled-1.pdf}}
+
+}
+
+\caption{\label{fig-rescaled}Distribution of fan engagement variables
+after rescaling.}
+
+\end{figure}%
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+We note that Table~\ref{tbl-cor} shows that our three fan engagement
+variables are largely uncorrelated.
+
+{
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2174}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1957}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2174}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1739}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1957}}@{}}
+
+\caption{\label{tbl-cor}Correlations among fan engagment variables.}
+
+\tabularnewline
+
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+z\_quality\_of\_play
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+z\_uncertain\_outcome
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+z\_loss\_aversion
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+zzz\_sum\_all\_three
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+z\_quality\_of\_play & 1 & NA & NA & NA \\
+z\_uncertain\_outcome & NA & 1 & NA & NA \\
+z\_loss\_aversion & NA & NA & 1 & NA \\
+zzz\_sum\_all\_three & NA & NA & NA & 1 \\
+
+\end{longtable}
+
+}
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/unnamed-chunk-5-1.pdf}}
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/unnamed-chunk-6-1.pdf}}
 
 \textsubscript{Source:
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
@@ -905,6 +1020,10 @@ the same structure as \(\mathbf{\beta}^{(k)}\) defined above.
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
 
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
 \subsection{Attendance}\label{sec-attend}
 
 In keeping with recent guidance from Wasserstein and Lazar (2016) and
@@ -916,9 +1035,19 @@ variables except for population achieve ``statistical significance'' at
 the 5\%-level, as shown in Table~\ref{tbl-anova}). Residual analysis for
 the attendance models are shown in Section~\ref{sec-resid-attend}.
 
+\subsubsection{Baseline effects}\label{baseline-effects}
+
 {
 
-\begin{longtable}[]{@{}llrrrr@{}}
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.0706}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.2706}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1059}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.0941}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1059}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}@{}}
 
 \caption{\label{tbl-coefs}Fitted coefficients for scalar terms in models
 for the natural logarithm of attendance.}
@@ -926,26 +1055,40 @@ for the natural logarithm of attendance.}
 \tabularnewline
 
 \toprule\noalign{}
-Model & Term & Estimate & Std Error & Statistic & P Value \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Term
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Estimate
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Std Error
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Statistic
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+P Value
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Conf Low
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Conf High
+\end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f1 & (Intercept) & 9.080 & 0.132 & 68.978 & 0.000 \\
-f2 & (Intercept) & 9.011 & 0.146 & 61.867 & 0.000 \\
-f3 & (Intercept) & 9.102 & 0.139 & 65.437 & 0.000 \\
-f1 & Caitlin Clark & 0.675 & 0.049 & 13.919 & 0.000 \\
-f2 & Caitlin Clark & 0.691 & 0.050 & 13.776 & 0.000 \\
-f3 & Caitlin Clark & 0.675 & 0.049 & 13.860 & 0.000 \\
-f3 & I(Loss Aversion) & 0.242 & 0.352 & 0.688 & 0.491 \\
-f1 & I(Quality Of Play) & 0.002 & 0.001 & 2.777 & 0.006 \\
-f2 & I(Uncertain Outcome) & 0.000 & 0.001 & -0.430 & 0.667 \\
-f1 & Median Income & -0.007 & 0.002 & -3.686 & 0.000 \\
-f2 & Median Income & -0.006 & 0.002 & -2.930 & 0.003 \\
-f3 & Median Income & -0.008 & 0.002 & -4.098 & 0.000 \\
-f1 & Median Pop & 0.015 & 0.007 & 2.040 & 0.041 \\
-f2 & Median Pop & 0.013 & 0.007 & 1.772 & 0.076 \\
-f3 & Median Pop & 0.015 & 0.007 & 2.080 & 0.038 \\
+f1 & (Intercept) & 9.202 & 0.081 & 113.091 & 0.000 & 9.042 & 9.361 \\
+f1 & I(Z Loss Aversion) & -0.081 & 0.048 & -1.690 & 0.091 & -0.175 &
+0.013 \\
+f1 & I(Z Quality Of Play) & 0.003 & 0.059 & 0.058 & 0.954 & -0.112 &
+0.119 \\
+f1 & I(Z Uncertain Outcome) & -0.053 & 0.022 & -2.407 & 0.016 & -0.097 &
+-0.010 \\
+f1 & Is Sellouttrue & 0.315 & 0.027 & 11.616 & 0.000 & 0.261 & 0.368 \\
+f1 & Median Income & NA & NA & NA & NA & NA & NA \\
+f1 & Median Pop & NA & NA & NA & NA & NA & NA \\
+f1 & P: A'ja Wilson & 0.061 & 0.024 & 2.573 & 0.010 & 0.014 & 0.107 \\
+f1 & P: Caitlin Clark & 0.460 & 0.042 & 10.825 & 0.000 & 0.376 &
+0.543 \\
 
 \end{longtable}
 
@@ -955,43 +1098,73 @@ f3 & Median Pop & 0.015 & 0.007 & 2.080 & 0.038 \\
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
 
-Consider first the strong evidence for the Caitlin Clark effect. Even
-for the smallest coefficient in Table~\ref{tbl-coefs}, the expected
-attendance nearly doubles (i.e., is multiplied by \(\exp(0.653)\) =
-1.96) when Clark plays in the game, and this is \emph{after} controlling
-for the Indiana Fever team effect, the level of fan engagement, and the
-season effects!
+Table~\ref{tbl-coefs} reports estimates from the baseline interaction.
+Because each measure of fan engagement is interacted with season, the
+reported coefficients for quality of play, outcome uncertainty, and loss
+aversion represent their estimated effects in the reference season
+(1997). The interaction terms, discussed below, capture how these
+relationships evolve over time. In the reference season, the evidence
+for the quality of play (\(f_1\)) and uncertainty of outcome (\(f_2\))
+hypotheses is weak, with those coefficients barely moving the needle.
+For the loss aversion hypothesis, a 10 percentage point increase in the
+probability of the home team winning is associated with a modest 4.31\%
+increase in the expected attendance, after controlling for our other
+factors.
 
-Conversely, the evidence for the quality of play (\(f_1\)) and
-uncertainty of outcome (\(f_2\)) hypotheses is weak, with those
-coefficients barely moving the needle. For the loss aversion hypothesis,
-a 10 percentage point increase in the probability of the home team
-winning is associated with a modest 4.31\% increase in the expected
-attendance, after controlling for our other factors.
+Among the control variables, games featuring Caitlin Clark were
+associated with significantly higher attendance, whole A'ja Wilson's
+presence was associated witha smaller but still significant increase in
+attendance. Even for the smallest coefficient in Table~\ref{tbl-coefs},
+the expected attendance nearly doubles (i.e., is multiplied by
+\(\exp(0.623)\) = 1.58) when Clark plays in the game, and this is
+\emph{after} controlling for the Indiana Fever team effect, the level of
+fan engagement, and the season effects! The corresponding change in
+attendance for A'ja Wilson---by most accounts a better player than
+Clark---is a multiple of 1.06.
 
-Table~\ref{tbl-glance} characterizes the model fits. We can see that
-while all models achieve a similar fit, models \(f_1\) (corresponding to
-the quality of play hypothesis) and \(f_3\) (corresponding to the home
-win probability) are slightly superior by most metrics.
+\protect\phantomsection\label{cell-fig-attend-coefs}
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-attend-coefs-1.pdf}}
+
+}
+
+\caption{\label{fig-attend-coefs}Relative magnitudes of coefficients in
+attendance model. Coefficients of interest are highlighted. Note the
+relatively large size of the coefficient associated with Caitlin Clark.}
+
+\end{figure}%
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+Table~\ref{tbl-glance} characterizes the model's fit. Our model explains
+\(70.2%
+\) of the variance in game attendance, and the small difference between
+\(r^2\) and \(adj.r^2\) suggests that the complexity of our model is
+justified.
 
 {
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0541}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0901}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.1261}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0541}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0901}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0721}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0270}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0901}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0811}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0811}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0811}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.1081}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0450}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0556}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0926}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.1296}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0556}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0926}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0741}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0370}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0741}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0741}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0741}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0833}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.1111}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 24\tabcolsep) * \real{0.0463}}@{}}
 
-\caption{\label{tbl-glance}Comparison of models.}
+\caption{\label{tbl-glance}Model fit}
 
 \tabularnewline
 
@@ -1027,12 +1200,8 @@ nobs
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f1 & 0.420 & 0.411 & 0.322 & 46.193 & 0 & 78 & -1411.098 & 2982.197 &
-3504.574 & 517.626 & 4984 & 5063 \\
-f2 & 0.387 & 0.378 & 0.331 & 40.370 & 0 & 78 & -1548.665 & 3257.331 &
-3779.708 & 546.533 & 4984 & 5063 \\
-f3 & 0.415 & 0.406 & 0.323 & 45.365 & 0 & 78 & -1430.227 & 3020.454 &
-3542.831 & 521.552 & 4984 & 5063 \\
+f1 & 0.702 & 0.691 & 0.233 & 66.734 & 0 & 172 & 274.025 & -200.05 &
+935.879 & 265.618 & 4883 & 5056 \\
 
 \end{longtable}
 
@@ -1041,6 +1210,55 @@ f3 & 0.415 & 0.406 & 0.323 & 45.365 & 0 & 78 & -1430.227 & 3020.454 &
 \textsubscript{Source:
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.3789}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1263}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1263}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0947}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0632}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1263}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0842}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Residual df
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Residual SS
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Df added
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+ΔSS
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+F-statistic
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+p-value
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Baseline (no season-varying slopes) & 4961 & 275.43 & NA & NA & NA &
+NA \\
+Season-varying slopes & 4883 & 265.62 & 78 & 9.814 & 2.313 & 0 \\
+\end{longtable}
+}
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+Table~\ref{tbl-anova} compares a model fit with constant slope
+coefficients to our model which allows each effect to vary by season.
+The interactions introduce 78 additional terms corresponding to season
+specific slopes to our model. The nested F-test rejects the null
+hypothesis that season-specific interactions are equal to zero,
+indicating that the effects of our fan engagement measures differ
+significantly across seasons.
+
+\subsubsection{Annual effects}\label{annual-effects}
 
 Figure~\ref{fig-season-coefs} shows that after controlling for the
 Caitlin Clark effect, expected attendance is only just returning its
@@ -1069,17 +1287,19 @@ for natural logarithm of attendance models.}
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
 
-Figure~\ref{fig-season-slopes} shows a general increase in the slope of
-the interaction terms in all three models in recent years. For all three
-models, these change in slope coefficients were decidedly negative until
-around 2015. This suggests that the relationship between attendance and
-fan engagement was more moderate during those years. (Note that for all
-three models, the main effect of the fan engagement term in
-Table~\ref{tbl-coefs} is positive.) While the change in slope associated
-with model \(f_1\) is still negative, it is closer to zero than it has
-been in the past. The changes in slope associated with models \(f_2\)
-and \(f_3\) are now positive, although it is difficult to assess the
-long-term trend due to the pandemic being only a few years past.
+Figure~\ref{fig-season-slopes} shows the season-by-season slopes on the
+interaction terms for our three hypotheses, relative to the 1997
+reference season. Where the seasonal fixed effects convey broad
+attendance trends, the interaction term slopes identify trends in how
+fan behavior is driven by game outcomes. Where general attendance
+dropped off after the opening season, the extent to which fan behavior
+is influenced by game outcome seems to improve past the first season. In
+particular, the interaction coefficients on our loss aversion variable
+are positive and generally increasing, suggesting that the attendance
+response to home win probability has strengthened over the league's
+history. The importance of outcome uncertainty and quality of play on
+attendance appears to be weaker and not substantially improved in recent
+years.
 
 \protect\phantomsection\label{cell-fig-season-slopes}
 \begin{figure}[H]
@@ -1099,6 +1319,24 @@ slopes for natural logarithm of attendance models.}
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
 
+\protect\phantomsection\label{cell-fig-season-slopes-actual}
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-season-slopes-actual-1.pdf}}
+
+}
+
+\caption{\label{fig-season-slopes-actual}Estimated season level slopes
+for attendance models}
+
+\end{figure}%
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
 \subsection{Percentage of Arena
 Capacity}\label{percentage-of-arena-capacity}
 
@@ -1111,12 +1349,22 @@ estimators for the covariance matrix.
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
 
+\subsubsection{Main effects}\label{main-effects}
+
 Table~\ref{tbl-coefs2} reports the coefficients from the percentage of
 arena capacity models.
 
 {
 
-\begin{longtable}[]{@{}llrrrr@{}}
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.0706}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.2706}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1059}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.0941}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1059}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 14\tabcolsep) * \real{0.1176}}@{}}
 
 \caption{\label{tbl-coefs2}Table of coefficients from percentage of
 arena capacity models.}
@@ -1124,30 +1372,62 @@ arena capacity models.}
 \tabularnewline
 
 \toprule\noalign{}
-Model & Term & Estimate & Std Error & Statistic & P Value \\
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Term
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Estimate
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Std Error
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Statistic
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+P Value
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Conf Low
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedleft
+Conf High
+\end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f1 & (Intercept) & 0.187 & 0.300 & 0.624 & 0.533 \\
-f2 & (Intercept) & 0.386 & 0.335 & 1.155 & 0.248 \\
-f3 & (Intercept) & 0.047 & 0.329 & 0.144 & 0.886 \\
-f1 & Caitlin Clark & 2.891 & 0.261 & 11.097 & 0.000 \\
-f2 & Caitlin Clark & 2.888 & 0.261 & 11.072 & 0.000 \\
-f3 & Caitlin Clark & 2.900 & 0.261 & 11.104 & 0.000 \\
-f3 & I(Loss Aversion) & 1.750 & 0.842 & 2.078 & 0.038 \\
-f1 & I(Quality Of Play) & 0.005 & 0.001 & 3.629 & 0.000 \\
-f2 & I(Uncertain Outcome) & -0.005 & 0.002 & -3.189 & 0.001 \\
-f1 & Median Income & 0.017 & 0.005 & 3.788 & 0.000 \\
-f2 & Median Income & 0.020 & 0.005 & 4.262 & 0.000 \\
-f3 & Median Income & 0.017 & 0.005 & 3.574 & 0.000 \\
-f1 & Median Pop & -0.095 & 0.015 & -6.479 & 0.000 \\
-f2 & Median Pop & -0.088 & 0.014 & -6.056 & 0.000 \\
-f3 & Median Pop & -0.099 & 0.015 & -6.558 & 0.000 \\
+f1 & (Intercept) & 2.197 & 0.218 & 10.091 & 0.000 & 1.770 & 2.624 \\
+f1 & I(Z Loss Aversion) & -0.170 & 0.117 & -1.444 & 0.149 & -0.400 &
+0.061 \\
+f1 & I(Z Quality Of Play) & 0.111 & 0.159 & 0.701 & 0.483 & -0.200 &
+0.423 \\
+f1 & I(Z Uncertain Outcome) & -0.123 & 0.057 & -2.168 & 0.030 & -0.234 &
+-0.012 \\
+f1 & Is Sellouttrue & 2.888 & 0.118 & 24.384 & 0.000 & 2.656 & 3.121 \\
+f1 & P: A'ja Wilson & 0.175 & 0.054 & 3.257 & 0.001 & 0.070 & 0.280 \\
+f1 & P: Caitlin Clark & 1.613 & 0.212 & 7.599 & 0.000 & 1.197 & 2.030 \\
 
 \end{longtable}
 
 }
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+Figure~\ref{fig-pct-coefs} shows that\ldots{}
+
+\protect\phantomsection\label{cell-fig-pct-coefs}
+\begin{figure}[H]
+
+\centering{
+
+\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-pct-coefs-1.pdf}}
+
+}
+
+\caption{\label{fig-pct-coefs}Relative magnitudes of coefficients in
+attendance model. Coefficients of interest are highlighted. Note the
+relatively large size of the coefficient associated with Caitlin Clark.}
+
+\end{figure}%
 
 \textsubscript{Source:
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
@@ -1198,12 +1478,8 @@ nobs
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f1 & 916.6665 & 5062 & -2997.876 & 6153.752 & 6669.600 & 570.6003 & 4984
-& 5063 \\
-f2 & 916.6665 & 5062 & -3017.679 & 6193.357 & 6709.205 & 583.2877 & 4984
-& 5063 \\
-f3 & 916.6665 & 5062 & -3001.311 & 6160.622 & 6676.470 & 574.0105 & 4984
-& 5063 \\
+f1 & 860.2571 & 5055 & -2705.892 & 5757.784 & 6887.185 & 266.5421 & 4883
+& 5056 \\
 
 \end{longtable}
 
@@ -1215,6 +1491,8 @@ Notebook}}
 
 Table~\ref{tbl-anova2} shows the analysis of variance for the percentage
 of arena capacity models.
+
+\subsubsection{Annual effects}\label{annual-effects-1}
 
 Figure~\ref{fig-season-coefs2} displays the estimated effects of our fan
 engagement measures on attendance relative to the 1997 reference season.
@@ -1261,9 +1539,6 @@ slopes for percentage of arena capacity models.}
 \textsubscript{Source:
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
-
-\subsection{Fan engagement and attendance over
-time}\label{fan-engagement-and-attendance-over-time}
 
 \section{Conclusion}\label{conclusion}
 
@@ -1436,13 +1711,13 @@ The Relationship with Winning Percentage.''} \emph{The Sport Journal}.
 {
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0741}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.4815}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0370}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0988}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0864}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1235}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0988}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0723}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.4940}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0361}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0964}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0843}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1205}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0964}}@{}}
 
 \caption{\label{tbl-anova}Analysis of variance for terms in models for
 the natural logarithm of attendance.}
@@ -1469,36 +1744,22 @@ P Value
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f3 & I(loss\_aversion) & 1 & 21.221 & 21.221 & 202.786 & 0.000 \\
-f1 & I(quality\_of\_play) & 1 & 23.178 & 23.178 & 223.169 & 0.000 \\
-f2 & I(uncertain\_outcome) & 1 & 0.003 & 0.003 & 0.027 & 0.868 \\
-f1 & is\_cc & 1 & 20.615 & 20.615 & 198.497 & 0.000 \\
-f2 & is\_cc & 1 & 20.969 & 20.969 & 191.220 & 0.000 \\
-f3 & is\_cc & 1 & 20.597 & 20.597 & 196.831 & 0.000 \\
-f1 & median\_income & 1 & 1.850 & 1.850 & 17.813 & 0.000 \\
-f2 & median\_income & 1 & 0.920 & 0.920 & 8.391 & 0.004 \\
-f3 & median\_income & 1 & 1.376 & 1.376 & 13.151 & 0.000 \\
-f1 & median\_pop & 1 & 0.241 & 0.241 & 2.318 & 0.128 \\
-f2 & median\_pop & 1 & 0.283 & 0.283 & 2.578 & 0.108 \\
-f3 & median\_pop & 1 & 0.157 & 0.157 & 1.503 & 0.220 \\
-f1 & factor(month(game\_date)) & 4 & 12.435 & 3.109 & 29.933 & 0.000 \\
-f2 & factor(month(game\_date)) & 4 & 12.455 & 3.114 & 28.396 & 0.000 \\
-f3 & factor(month(game\_date)) & 4 & 12.271 & 3.068 & 29.316 & 0.000 \\
-f1 & factor(wday(game\_date)) & 6 & 14.756 & 2.459 & 23.680 & 0.000 \\
-f2 & factor(wday(game\_date)) & 6 & 14.385 & 2.397 & 21.863 & 0.000 \\
-f3 & factor(wday(game\_date)) & 6 & 14.401 & 2.400 & 22.937 & 0.000 \\
-f1 & name\_current & 12 & 127.280 & 10.607 & 102.127 & 0.000 \\
-f2 & name\_current & 12 & 139.826 & 11.652 & 106.260 & 0.000 \\
-f3 & name\_current & 12 & 129.368 & 10.781 & 103.021 & 0.000 \\
-f3 & I(loss\_aversion):factor(season\_id) & 26 & 20.432 & 0.786 & 7.510
-& 0.000 \\
-f1 & I(quality\_of\_play):factor(season\_id) & 26 & 17.752 & 0.683 &
-6.574 & 0.000 \\
-f2 & I(uncertain\_outcome):factor(season\_id) & 26 & 8.443 & 0.325 &
-2.961 & 0.000 \\
-f1 & factor(season\_id) & 26 & 156.100 & 6.004 & 57.808 & 0.000 \\
-f2 & factor(season\_id) & 26 & 148.017 & 5.693 & 51.916 & 0.000 \\
-f3 & factor(season\_id) & 26 & 150.457 & 5.787 & 55.299 & 0.000 \\
+f1 & I(z\_loss\_aversion) & 1 & 2.981 & 2.981 & 54.793 & 0.000 \\
+f1 & I(z\_quality\_of\_play) & 1 & 5.733 & 5.733 & 105.392 & 0.000 \\
+f1 & I(z\_uncertain\_outcome) & 1 & 0.003 & 0.003 & 0.051 & 0.822 \\
+f1 & is\_aw & 1 & 0.511 & 0.511 & 9.399 & 0.002 \\
+f1 & is\_cc & 1 & 13.501 & 13.501 & 248.198 & 0.000 \\
+f1 & is\_sellout & 1 & 8.349 & 8.349 & 153.486 & 0.000 \\
+f1 & factor(month(game\_date)) & 4 & 12.297 & 3.074 & 56.518 & 0.000 \\
+f1 & factor(wday(game\_date)) & 6 & 14.302 & 2.384 & 43.820 & 0.000 \\
+f1 & I(z\_loss\_aversion):factor(season\_id) & 26 & 4.638 & 0.178 &
+3.280 & 0.000 \\
+f1 & I(z\_quality\_of\_play):factor(season\_id) & 26 & 2.373 & 0.091 &
+1.678 & 0.017 \\
+f1 & I(z\_uncertain\_outcome):factor(season\_id) & 26 & 2.803 & 0.108 &
+1.982 & 0.002 \\
+f1 & factor(season\_id) & 26 & 154.156 & 5.929 & 108.997 & 0.000 \\
+f1 & factor(arena) & 52 & 402.731 & 7.745 & 142.378 & 0.000 \\
 
 \end{longtable}
 
@@ -1511,13 +1772,13 @@ Notebook}}
 {
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0632}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.4105}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0316}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0947}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1263}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1895}}
-  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0842}}@{}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0619}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.4227}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0309}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0928}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1237}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1856}}
+  >{\raggedleft\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0825}}@{}}
 
 \caption{\label{tbl-anova2}Analysis of variance for terms in models for
 percentage of arena capacity.}
@@ -1544,36 +1805,24 @@ P Value
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-f3 & I(loss\_aversion) & 1 & 2.754 & 5061 & 913.912 & 0.097 \\
-f1 & I(quality\_of\_play) & 1 & 13.447 & 5061 & 903.220 & 0.000 \\
-f2 & I(uncertain\_outcome) & 1 & 0.022 & 5061 & 916.644 & 0.882 \\
-f1 & is\_cc & 1 & 22.602 & 5010 & 577.550 & 0.000 \\
-f2 & is\_cc & 1 & 23.047 & 5010 & 587.921 & 0.000 \\
-f3 & is\_cc & 1 & 22.752 & 5010 & 584.769 & 0.000 \\
-f1 & median\_income & 1 & 0.773 & 5012 & 604.367 & 0.379 \\
-f2 & median\_income & 1 & 1.396 & 5012 & 614.730 & 0.237 \\
-f3 & median\_income & 1 & 1.148 & 5012 & 611.878 & 0.284 \\
-f1 & median\_pop & 1 & 4.216 & 5011 & 600.151 & 0.040 \\
-f2 & median\_pop & 1 & 3.762 & 5011 & 610.968 & 0.052 \\
-f3 & median\_pop & 1 & 4.357 & 5011 & 607.521 & 0.037 \\
-f1 & factor(month(game\_date)) & 4 & 13.224 & 5025 & 700.273 & 0.010 \\
-f2 & factor(month(game\_date)) & 4 & 13.216 & 5025 & 708.391 & 0.010 \\
-f3 & factor(month(game\_date)) & 4 & 13.157 & 5025 & 705.692 & 0.011 \\
-f1 & factor(wday(game\_date)) & 6 & 18.761 & 5029 & 713.497 & 0.005 \\
-f2 & factor(wday(game\_date)) & 6 & 18.436 & 5029 & 721.607 & 0.005 \\
-f3 & factor(wday(game\_date)) & 6 & 18.612 & 5029 & 718.849 & 0.005 \\
-f1 & name\_current & 12 & 95.133 & 5013 & 605.140 & 0.000 \\
-f2 & name\_current & 12 & 92.266 & 5013 & 616.125 & 0.000 \\
-f3 & name\_current & 12 & 92.666 & 5013 & 613.026 & 0.000 \\
-f3 & I(loss\_aversion):factor(season\_id) & 26 & 10.759 & 4984 & 574.011
-& 0.996 \\
-f1 & I(quality\_of\_play):factor(season\_id) & 26 & 6.950 & 4984 &
-570.600 & 1.000 \\
-f2 & I(uncertain\_outcome):factor(season\_id) & 26 & 4.633 & 4984 &
-583.288 & 1.000 \\
-f1 & factor(season\_id) & 26 & 170.961 & 5035 & 732.259 & 0.000 \\
-f2 & factor(season\_id) & 26 & 176.601 & 5035 & 740.043 & 0.000 \\
-f3 & factor(season\_id) & 26 & 176.451 & 5035 & 737.461 & 0.000 \\
+f1 & median\_income & 0 & 0.000 & 4964 & 341.054 & NA \\
+f1 & median\_pop & 0 & 0.000 & 4964 & 341.054 & NA \\
+f1 & I(z\_loss\_aversion) & 1 & 2.816 & 5052 & 852.070 & 0.093 \\
+f1 & I(z\_quality\_of\_play) & 1 & 5.353 & 5054 & 854.904 & 0.021 \\
+f1 & I(z\_uncertain\_outcome) & 1 & 0.017 & 5053 & 854.887 & 0.895 \\
+f1 & is\_aw & 1 & 0.835 & 4962 & 317.728 & 0.361 \\
+f1 & is\_cc & 1 & 22.492 & 4963 & 318.563 & 0.000 \\
+f1 & is\_sellout & 1 & 41.696 & 4961 & 276.032 & 0.000 \\
+f1 & factor(month(game\_date)) & 4 & 11.663 & 5016 & 611.101 & 0.020 \\
+f1 & factor(wday(game\_date)) & 6 & 15.055 & 5020 & 622.764 & 0.020 \\
+f1 & I(z\_loss\_aversion):factor(season\_id) & 26 & 4.302 & 4883 &
+266.542 & 1.000 \\
+f1 & I(z\_quality\_of\_play):factor(season\_id) & 26 & 2.500 & 4935 &
+273.532 & 1.000 \\
+f1 & I(z\_uncertain\_outcome):factor(season\_id) & 26 & 2.688 & 4909 &
+270.844 & 1.000 \\
+f1 & factor(season\_id) & 26 & 214.251 & 5026 & 637.819 & 0.000 \\
+f1 & factor(arena) & 52 & 270.047 & 4964 & 341.054 & 0.000 \\
 
 \end{longtable}
 
@@ -1592,12 +1841,6 @@ models}\label{sec-resid-attend}
 
 \begin{verbatim}
 $f1
-NULL
-
-$f2
-NULL
-
-$f3
 NULL
 \end{verbatim}
 
@@ -1669,134 +1912,6 @@ NULL
 %
 \begin{minipage}[t]{0.50\linewidth}
 
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-5.pdf}}
-
-}
-
-\caption{\label{fig-resids-5}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-\newline
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-6.pdf}}
-
-}
-
-\caption{\label{fig-resids-6}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-%
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-7.pdf}}
-
-}
-
-\caption{\label{fig-resids-7}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-\newline
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-8.pdf}}
-
-}
-
-\caption{\label{fig-resids-8}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-%
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-9.pdf}}
-
-}
-
-\caption{\label{fig-resids-9}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-\newline
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-10.pdf}}
-
-}
-
-\caption{\label{fig-resids-10}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-%
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-11.pdf}}
-
-}
-
-\caption{\label{fig-resids-11}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-\newline
-\begin{minipage}[t]{0.50\linewidth}
-
-\begin{figure}[H]
-
-\centering{
-
-\pandocbounded{\includegraphics[keepaspectratio]{index_files/figure-pdf/fig-resids-12.pdf}}
-
-}
-
-\caption{\label{fig-resids-12}Residual plots for models.}
-
-\end{figure}%
-
-\end{minipage}%
-%
-\begin{minipage}[t]{0.50\linewidth}
-
 \textsubscript{Source:
 \href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
 Notebook}}
@@ -1804,6 +1919,16 @@ Notebook}}
 \end{minipage}%
 
 \end{figure}%
+
+\subsection{Tobit modeling}\label{tobit-modeling}
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
+
+\textsubscript{Source:
+\href{https://beanumber.github.io/wnbaattendance/index.qmd.html}{Article
+Notebook}}
 
 
 
