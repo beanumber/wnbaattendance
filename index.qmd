@@ -77,9 +77,23 @@ wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
   group_by(arena) |>
   mutate(
     median_income = median_income / 1000,
-    median_pop = median_pop / 1000000,
-    pct_capacity = attendance / pmax(max(attendance), arena_capacity),
-    pct_capacity_safe = (pct_capacity * (2 * (n() - 1)) + 0.5) / (2 * n()),
+    metro_pop = total_pop / 1000000,
+    est_capacity = max(max(attendance), arena_capacity),
+    pct_capacity = attendance / est_capacity,
+    pct_capacity_safe = case_when(
+      pct_capacity == 1 ~ 0.999, 
+      pct_capacity == 0 ~ 0.001,
+      TRUE ~ pct_capacity
+    ),
+    arena_size = case_when(
+      arena_capacity >= 16000 ~ "arena_large",
+      arena_capacity >= 11000 ~ "arena_medium",
+      arena_capacity >= 5500 ~ "arena_small",
+      TRUE ~ "arena_unknown"
+    )
+  ) |>
+  ungroup() |>
+  mutate(
     is_sellout = pct_capacity > 0.95,
     quality_of_play = elo_home_pregame + elo_away_pregame - 3000,
     uncertain_outcome = abs(elo_home_pregame - elo_away_pregame),
@@ -88,15 +102,20 @@ wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
     z_uncertain_outcome = log(uncertain_outcome + 1) - mean(log(uncertain_outcome + 1)),
     z_loss_aversion = (loss_aversion - mean(loss_aversion)) / sd(loss_aversion),
     zzz_sum_all_three = z_loss_aversion + z_quality_of_play - z_uncertain_outcome,
-    arena_size = case_when(
-      arena_capacity >= 16000 ~ "arena_large",
-      arena_capacity >= 11000 ~ "arena_medium",
-      arena_capacity >= 5500 ~ "arena_small",
-      TRUE ~ "arena_unknown"
-    )
   ) |>
   ungroup()
 ```
+
+```{r}
+#| eval: false
+ggplot(wnba_gl, aes(x = pct_capacity, y = pct_capacity_safe)) +
+  geom_point()
+
+wnba_gl |>
+  filter(pct_capacity != pct_capacity_safe)
+```
+
+
 
 ## Introduction {#sec-intro}
 
@@ -141,6 +160,7 @@ Attendance data was unavailable for only `r nrow(filter(wnba_gl, is.na(attendanc
 Because the arenas WNBA teams play in vary widely in size-- the New York Liberty alone have called both the Barclays Center (17,732 seat capacity) and the Westchester County Center (2,300 seat capacity) home in recent years-- we contextualize raw attendance numbers by approximating the capacity of each game venue. 
 Because accurate records of arena configurations and capacities were difficult to obtain (particularly for venues not still in use) we approximated the practical capacity of each space by pulling the maximally attended game for each venue. 
 While teams have many reasons they might choose to play for a sold-out crowd in a smaller arena, smaller venue size will also by nature constrain attendance, making its consideration in our model important.
+Using our definition, we deemed `r round(100 * nrow(filter(wnba_gl, is_sellout)) / nrow(wnba_gl), 1)`% of the games as sellouts. 
 
 Second, we collected game-level performance data from the **wehoop** R package [@hutchinson_gilani_2021_wehoop], which uses the official WNBA API. The game-level performance data include
 These data include the final score of the game. 
@@ -508,24 +528,55 @@ where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\math
 ## Results
 
 ```{r}
-f_control <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + factor(arena) + median_income + median_pop + is_cc + is_aw + is_sellout"
+f_time <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date))"
+f_place <- "factor(name_current) + median_income + metro_pop + is_cc + is_aw"
 f_exp <- c("(I(z_quality_of_play) + I(z_uncertain_outcome) + I(z_loss_aversion))")
 
-mod_df <- wnba_gl |>
-  filter(!season_id %in% c(2021), is_active) #|>
-#  filter_out(is.na(attendance))
+wnba_df <- wnba_gl |>
+  filter(!season_id %in% c(2020, 2021), is_active) |>
+  filter_out(is.na(attendance))
 
-mod_attend <- f_exp |>
-  map_chr(~paste("log(attendance + 1) ~ ", .x, "* factor(season_id) +", f_control)) |>
-  map(as.formula) |>
-  map(lm, data = mod_df) |>
-  set_names(nm = paste0("f", 1:length(f_exp)))
-
-#mod_attend |>
-#  map(summary)
+form <- paste("log(attendance + 1) ~ ", f_exp, "* factor(season_id) +", f_place, "+", f_time) |>
+  as.formula()
 ```
 
 ```{r}
+# OLS model
+mod_ols <- lm(formula = form, data = wnba_df)
+
+# Tobit model
+library(VGAM)
+
+mod_tobit <- vglm(
+  formula = mod_ols$call,
+  family = tobit(Upper = ifelse(wnba_df$is_sellout, log(wnba_df$attendance), Inf), imethod = 2), 
+  data = wnba_df,
+  na.action = "na.exclude"
+)
+
+wnba_df <- wnba_df |>
+  mutate(
+    y_hat_ols = exp(fitted(mod_ols)),
+    y_hat_tobit = exp(fitted(mod_tobit))
+  )
+
+ggplot(data = wnba_df, aes(x = y_hat_ols, y = y_hat_tobit, color = is_sellout)) +
+  geom_abline(slope = 1, linetype = 3) + 
+  geom_point() +
+  facet_wrap(vars(arena))
+
+wnba_df |>
+  group_by(arena) |>
+  summarize(
+    cor = cor(y_hat_ols, y_hat_tobit)
+  )
+
+mod_attend <- mod_tobit
+```
+
+
+```{r}
+#| eval: false
 mod <- mod_attend$f1
 coef_df <- broom::tidy(mod)
 int_df <- coef_df |>
@@ -545,7 +596,7 @@ main_df <- coef_df |>
   )) |>
   mutate(
     variable = term,
-    season = min(mod_df$season_id, na.rm = TRUE)
+    season = min(wnba_df$season_id, na.rm = TRUE)
   )
 
 slopes <- bind_rows(
@@ -568,10 +619,16 @@ Residual analysis for the attendance models are shown in @sec-resid-attend.
 #### Baseline effects
 
 ```{r}
+tidy.vglm <- broom.helpers::tidy_vgam
+```
+
+
+```{r}
 #| label: tbl-coefs
 #| tbl-cap: "Fitted coefficients for scalar terms in models for the natural logarithm of attendance. "
 mod_attend_coefs <- mod_attend |>
-  map(broom::tidy, conf.int = TRUE) |>
+  tidy(conf.int = TRUE) |>
+#  map(broom::tidy, conf.int = TRUE) |>
   bind_rows(.id = "model") 
 
 min_cc <- mod_attend_coefs |>
@@ -604,7 +661,7 @@ The corresponding change in attendance for A'ja Wilson---by most accounts a bett
 #| label: fig-attend-coefs
 #| fig-cap: "Relative magnitudes of coefficients in attendance model. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
 plot_attend_coefs <- mod_attend_coefs |>
-  filter_out(str_detect(term, "(arena)|:|Intercept|median")) |>
+  filter_out(str_detect(term, "(arena)|:|Intercept|median|metro|Golden")) |>
   mutate(
     hilite = str_detect(term, "is_cc|2025|uncertain")
   ) |>
@@ -624,7 +681,7 @@ Our model explains $70.2%$ of the variance in game attendance, and the small dif
 #| label: tbl-glance
 #| tbl-cap: "Model fit"
 mod_attend |>
-  map(broom::glance) |>
+  broom::glance() |>
   bind_rows(.id = "model") |>
   knitr::kable(digits = 3)
 ```
@@ -641,7 +698,7 @@ mod_base <- lm(
     factor(arena) +
     median_income + median_pop +
     is_cc + is_aw + is_sellout,
-  data = mod_df
+  data = wnba_df
 )
 
 mod_int <- lm(
@@ -654,7 +711,7 @@ mod_int <- lm(
     factor(arena) +
     median_income + median_pop +
     is_cc + is_aw + is_sellout,
-  data = mod_df
+  data = wnba_df
 )
 
 #anova(mod_base, mod_int)
@@ -761,13 +818,25 @@ actual_slopes_plot
 Because our response variable $\gamma$ is constrained between 0 and 1, but has significant mass at 1 exactly, we fit a Papke-Wooldridge fractional response model [@papke1996econometric] with HC1 sandwich estimators for the covariance matrix. 
 
 ```{r}
+#| label: fit-tobit-pct
+# Arena capacity
+mod_tobit_pct <- vglm(
+  formula = update(mod_ols, pct_capacity_safe ~ .),
+  family = tobit(Upper = 1, Lower = 0, imethod = 2), 
+  data = wnba_df,
+  na.action = "na.exclude"
+)
+```
+
+
+```{r}
 #| label: fit-glm
 library(lmtest)
 library(sandwich)
 mod_pct <- f_exp |>
   map_chr(~paste("pct_capacity ~ ", .x, "* factor(season_id) +", f_control)) |>
   map(as.formula) |>
-  map(glm, data = mod_df, family = binomial(link = "logit")) |>
+  map(glm, data = wnba_df, family = binomial(link = "logit")) |>
   set_names(nm = paste0("f", 1:length(f_exp)))
 
 vcov_pct <- mod_pct |>
@@ -919,63 +988,60 @@ mod_attend |>
 
 ```{r}
 #| eval: false
-mod_simple <- lm(log(attendance) ~ loss_aversion + factor(season_id) + factor(arena) + is_cc + name_current, data = mod_df)
+
+wnba_sun <- wnba_df |>
+  filter(name_current == "Connecticut Sun")
+
+ggplot(data = wnba_sun, aes(y = attendance, x = z_quality_of_play, color = is_sellout)) +
+  geom_point() +
+  facet_wrap(vars(arena))
+
+mod_simple <- lm(
+  log(attendance) ~ (I(z_quality_of_play) + I(z_uncertain_outcome) + I(z_loss_aversion)) + factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + is_cc + is_aw, 
+  data = wnba_sun,
+  na.action = "na.exclude"
+)
+
 summary(mod_simple)
 plot(mod_simple, which = 1)
 
-mod_df_a <- mod_simple |>
-  broom::augment() |>
-  select(contains(".")) |>
-  bind_cols(mod_df)
+wnba_sun <- wnba_sun |>
+  mutate(y_hat_simple = exp(fitted(mod_simple)))
 
-ggplot(data = mod_df_a, aes(y = .resid, x = .fitted, color = pct_capacity_safe)) +
+ggplot(data = wnba_sun, aes(x = attendance, y = y_hat_simple, color = is_sellout)) +
+  geom_abline(slope = 1, linetype = 3) + 
   geom_point() +
-  facet_wrap(vars(name_current))
+  facet_wrap(vars(arena))
 ```
-
 
 ```{r}
 #| eval: false
 library(VGAM)
 
-ggplot(data = mod_df, aes(y = arena_capacity - attendance, x = game_date)) +
-  geom_point(aes(color = pct_capacity_safe)) +
-  geom_point(aes(y = arena_capacity)) + 
-  facet_wrap(vars(name_current))
-
-ggplot(data = mod_df, aes(y = log(arena_capacity - attendance), x = quality_of_play)) +
-  geom_point(aes(color = pct_capacity_safe)) +
-#  geom_point(aes(y = arena_capacity)) + 
-  facet_wrap(vars(name_current))
-
-gl_pieces <- games_by_arena_size |>
-  group_split()
-
-mod_df |>
-  pull(attendance) |>
-  summary()
-
-mod_tobit <- vglm(log(attendance + 1) ~ loss_aversion, tobit(Upper = log(20000), imethod = 2), data = mod_df)
-
-mod_tobit_small <- vglm(log(attendance + 1) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(5000), imethod = 2), data = gl_pieces[[1]])
-
-mod_tobit_medium <- vglm(log(attendance) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(15000)), data = gl_pieces[[2]])
-
-mod_tobit_large <- vglm(log(attendance) ~ home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Upper = log(22000)), data = gl_pieces[[3]])
+mod_tobit <- vglm(
+  mod_simple$call,
+  family = tobit(Upper = ifelse(wnba_sun$is_sellout, log(wnba_sun$attendance), Inf), imethod = 2), 
+  data = wnba_sun,
+  na.action = "na.exclude"
+)
 
 summary(mod_tobit)
-exp(-1.079e+00)
 
+wnba_sun <- wnba_sun |>
+  mutate(y_hat_tobit = exp(fitted(mod_tobit)))
 
+ggplot(data = wnba_sun, aes(x = attendance, y = y_hat_tobit, color = is_sellout)) +
+  geom_abline(slope = 1, linetype = 3) + 
+  geom_point() +
+  facet_wrap(vars(arena))
 
+ggplot(data = wnba_sun, aes(y = y_hat_simple, x = y_hat_tobit, color = is_sellout)) +
+  geom_abline(slope = 1, linetype = 3) + 
+  geom_point() +
+  facet_wrap(vars(name_current))
 
-mod_tobit <- vglm(pct_capacity ~ elo.A + elo.B + home_win_prob * factor(period) + factor(wday(game_date)) + factor(month(game_date)) + name_current + is_cc + median_income  + median_pop, tobit(Lower = 0, Upper = 1, imethod = 2), data = wnba_gl_reg)
-summary(mod_tobit)
-
-r <- residuals(mod_tobit, type = "response")[, 1]
-sqrt(mean(r^2))
-y_hat <- fitted.values(mod_tobit)[, 1]
-
-plot(y = r, x = y_hat)
+ggplot(data = wnba_sun, aes(x = attendance - y_hat_tobit, y = y_hat_tobit, color = is_sellout)) +
+  geom_abline(slope = 1, linetype = 3) + 
+  geom_point() +
+  facet_wrap(vars(arena))
 ```
-
