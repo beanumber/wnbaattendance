@@ -35,6 +35,7 @@ jobs:
           packages:
             any::remotes
             any::broom
+            any::broom.helpers
             any::elo
             any::gt
             any::here
@@ -45,6 +46,7 @@ jobs:
             any::sandwich
             any::tidycensus
             any::tidyverse
+            any::VGAM
           include-quarto: false
 
       - uses: quarto-dev/quarto-actions/setup@v2
