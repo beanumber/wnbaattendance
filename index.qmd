@@ -94,7 +94,7 @@ wnba_gl <- read_rds(here::here("data/wnba_gl.rds")) |>
   ) |>
   ungroup() |>
   mutate(
-    is_sellout = pct_capacity > 0.95,
+    is_sellout = pct_capacity > 0.92,
     quality_of_play = elo_home_pregame + elo_away_pregame - 3000,
     uncertain_outcome = abs(elo_home_pregame - elo_away_pregame),
     loss_aversion = elo_home_win_prob^2,
@@ -370,7 +370,7 @@ plot_attend +
 ```
 
 In @fig-capacity-year, we note similar trends in the relationship between the percentage of the arena capacity filled and the estimated home win probability. 
-We also note that since arena capacity cannot exceed 1, there are edge effects created by sellouts. 
+We also note that since the percentage of arena capacity cannot exceed 1, there are edge effects created by sellouts. 
 Those sellouts are much more frequent in the last two years of data, and many of the sellouts involve Caitlin Clark. 
 
 ```{r}
@@ -381,6 +381,48 @@ plot_capacity <- plot_attend +
   scale_y_continuous("Percentage of Arena Capacity")
 plot_capacity
 ```
+
+@tbl-sellout summarizes attendance figures across the 10 arenas with the most sellouts. 
+We make several observations.
+The Golden State Valkyries (a 2025 expansion franchise) sold out all 22 of their games at the Chase Center.
+In terms of measuring fan demand, there is a profound difference between selling out a small arena (e.g., the Entertainment and Sports Arena in Washington, D.C. with a capacity of slightly more than 4000) and a large arena (e.g., Gainbridge Fieldhouse in Indianapolis, with a capacity of more than 18000). 
+Teams like Washington and Connecticut may have been trying to maximize the percentage of arena capacity at the expense of drawing larger crowds. 
+Or perhaps they didn't have a larger arena in which to play. 
+Just two of the 27 sellouts at Gainbridge Fieldhouse occurred before Clark's arrival. 
+
+```{r}
+#| label: tbl-sellout
+#| tbl-cap: "Summary statistics for attendance across the 10 WNBA arenas with the most sellouts. We note the difference between selling out a small arena (e.g., Entertainment and Sports Arena in Washington, D.C.) and a large arena (e.g., Gainbridge Fieldhouse in Indianapolis). "
+wnba_gl |>
+  group_by(arena) |>
+  summarize(
+    home_teams = paste(unique(team_abbreviation), collapse = ", "),
+    num_games = n(),
+    max_attendance = max(attendance),
+    avg_attendance = mean(attendance, na.rm = TRUE),
+    num_sellouts = sum(is_sellout, na.rm = TRUE)
+  ) |>
+  arrange(desc(num_sellouts)) |> 
+  slice_head(n = 10) |>
+  bind_rows(
+    wnba_gl |>
+      summarize(
+        arena = paste("Total among", n_distinct(arena), "arenas"),
+        home_teams = as.character(n_distinct(team_id)),
+        num_games = n(),
+        max_attendance = max(attendance, na.rm = TRUE),
+        avg_attendance = mean(attendance, na.rm = TRUE),
+        num_sellouts = sum(is_sellout, na.rm = TRUE)
+      )
+  ) |>
+  mutate(
+    pct_sellouts = num_sellouts / num_games,
+    avg_capacity = avg_attendance / max_attendance
+  ) |>
+  janitor::clean_names(case = "title") |>
+  knitr::kable(digits = 3)
+```
+
 
 Because the raw attendance figures are not normally distributed, we model the logarithm of attendance. 
 Similarly, because the percentage of arena capacity are bound above by 1 and below by 0, we employ a Tobit regression model. 
@@ -536,24 +578,40 @@ wnba_df <- wnba_gl |>
   filter(!season_id %in% c(2020, 2021), is_active) |>
   filter_out(is.na(attendance))
 
-form <- paste("log(attendance + 1) ~ ", f_exp, "* factor(season_id) +", f_place, "+", f_time) |>
+form_basic <- paste("log(attendance + 1) ~ ", f_exp, "+", f_place, "+", f_time) |>
   as.formula()
+
+form_interaction <- update(form_basic, paste(". ~ . + ", f_exp, "* factor(season_id)"))
 ```
 
 ```{r}
+#| label: mod-ols
 # OLS model
-mod_ols <- lm(formula = form, data = wnba_df)
+mod_ols_basic <- lm(formula = form_basic, data = wnba_df)
+mod_ols <- lm(formula = form_interaction, data = wnba_df)
+```
 
+```{r}
+#| label: mod-tobit
 # Tobit model
 library(VGAM)
 
-mod_tobit <- vglm(
-  formula = mod_ols$call,
+mod_tobit_basic <- vglm(
+  formula = form_basic,
   family = tobit(Upper = ifelse(wnba_df$is_sellout, log(wnba_df$attendance), Inf), imethod = 2), 
   data = wnba_df,
   na.action = "na.exclude"
 )
 
+mod_tobit <- vglm(
+  formula = form_interaction,
+  family = tobit(Upper = ifelse(wnba_df$is_sellout, log(wnba_df$attendance), Inf), imethod = 2), 
+  data = wnba_df,
+  na.action = "na.exclude"
+)
+```
+
+```{r}
 wnba_df <- wnba_df |>
   mutate(
     y_hat_ols = exp(fitted(mod_ols)),
@@ -566,7 +624,7 @@ ggplot(data = wnba_df, aes(x = y_hat_ols, y = y_hat_tobit, color = is_sellout)) 
   facet_wrap(vars(arena))
 
 wnba_df |>
-  group_by(arena) |>
+#  group_by(arena) |>
   summarize(
     cor = cor(y_hat_ols, y_hat_tobit)
   )
@@ -574,10 +632,14 @@ wnba_df |>
 mod_attend <- mod_tobit
 ```
 
+```{r}
+#| label: tidy-vglm
+library(broom)
+tidy.vglm <- broom.helpers::tidy_vgam
+```
 
 ```{r}
-#| eval: false
-mod <- mod_attend$f1
+mod <- mod_attend
 coef_df <- broom::tidy(mod)
 int_df <- coef_df |>
   filter(str_detect(term, ":factor\\(season_id\\)"))
@@ -617,11 +679,6 @@ In keeping with recent guidance from @wasserstein2016asa and @wasserstein2019mov
 Residual analysis for the attendance models are shown in @sec-resid-attend. 
 
 #### Baseline effects
-
-```{r}
-tidy.vglm <- broom.helpers::tidy_vgam
-```
-
 
 ```{r}
 #| label: tbl-coefs
@@ -677,6 +734,22 @@ plot_attend_coefs
 @tbl-glance characterizes the model's fit. 
 Our model explains $70.2%$ of the variance in game attendance, and the small difference between $r^2$ and $adj.r^2$ suggests that the complexity of our model is justified.
 
+
+```{r}
+#| label: glance-vglm
+glance.vglm <- function(x, ...) {
+  tibble::tibble(
+    nobs        = VGAM::nobs(x),
+    df.residual = VGAM::df.residual(x),
+    logLik      = as.numeric(stats::logLik(x)),
+    AIC         = AIC(x),
+    BIC         = BIC(x),
+#    deviance    = if (length(x@criterion$deviance) > 0) x@criterion$deviance else NA_real_
+  )
+}
+```
+
+
 ```{r}
 #| label: tbl-glance
 #| tbl-cap: "Model fit"
@@ -687,49 +760,12 @@ mod_attend |>
 ```
 
 ```{r}
-mod_base <- lm(
-  log(attendance + 1) ~
-    (z_quality_of_play +
-     z_uncertain_outcome +
-     z_loss_aversion) +
-    factor(season_id) +
-    factor(wday(game_date)) +
-    factor(month(game_date)) +
-    factor(arena) +
-    median_income + median_pop +
-    is_cc + is_aw + is_sellout,
-  data = wnba_df
-)
-
-mod_int <- lm(
-  log(attendance + 1) ~
-    (z_quality_of_play +
-     z_uncertain_outcome +
-     z_loss_aversion) * factor(season_id) +
-    factor(wday(game_date)) +
-    factor(month(game_date)) +
-    factor(arena) +
-    median_income + median_pop +
-    is_cc + is_aw + is_sellout,
-  data = wnba_df
-)
-
-#anova(mod_base, mod_int)
-anova_df <- tibble(
-  Model = c("Baseline (no season-varying slopes)",
-            "Season-varying slopes"),
-  `Residual df` = c(4961, 4883),
-  `Residual SS` = c(275.43, 265.62),
-  `Df added` = c(NA, 78),
-  `ΔSS` = c(NA, 9.8143),
-  `F-statistic` = c(NA, 2.3131),
-  `p-value` = c(NA, 7.477e-10)
-)
-
-#| label: tbl-anova
+#| label: tbl-lrt
 #| tbl-cap: "Model comparison: constant vs season-varying effects of fan engagement on attendance."
-kable(anova_df, digits = 3)
+anova(mod_tobit_basic, mod_tobit, type = "I") |>
+  knitr::kable(digits = 3)
 ```
+
 @tbl-anova compares a model fit with constant slope coefficients to our model which allows each effect to vary by season. The interactions introduce 78 additional terms corresponding to season specific slopes to our model. The nested F-test rejects the null hypothesis that season-specific interactions are equal to zero, indicating that the effects of our fan engagement measures differ significantly across seasons. 
 
 #### Annual effects
@@ -746,7 +782,7 @@ plot_attend_seasons <- mod_attend_coefs |>
   filter(str_detect(term, "season_id")) |>
   filter_out(str_detect(term, ":")) |>
   mutate(season_id = parse_number(str_sub(term, -4))) |>
-  ggplot(aes(x = season_id, y = estimate, color = model)) +
+  ggplot(aes(x = season_id, y = estimate)) +
   geom_hline(yintercept = 0, linetype = 3) +
   geom_line() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
@@ -794,8 +830,8 @@ baseline <- tibble(
   )
 )
 
-slopes_actual <- slopes|>
-  left_join(baseline, by = "variable")|>
+slopes_actual <- slopes |>
+  left_join(baseline, by = "variable") |>
   mutate(slope = estimate + baseline)
 
 actual_slopes_plot <- slopes_actual |>
@@ -833,14 +869,13 @@ mod_tobit_pct <- vglm(
 #| label: fit-glm
 library(lmtest)
 library(sandwich)
-mod_pct <- f_exp |>
-  map_chr(~paste("pct_capacity ~ ", .x, "* factor(season_id) +", f_control)) |>
-  map(as.formula) |>
-  map(glm, data = wnba_df, family = binomial(link = "logit")) |>
-  set_names(nm = paste0("f", 1:length(f_exp)))
+mod_pct <- glm(
+  formula = formula(mod_tobit_pct),
+  data = wnba_df, 
+  family = binomial(link = "logit")
+)
 
-vcov_pct <- mod_pct |>
-  map(vcovHC, type = "HC1")
+vcov_pct <- vcovHC(mod_pct, type = "HC1")
 ```
 
 #### Main effects
@@ -850,9 +885,9 @@ vcov_pct <- mod_pct |>
 ```{r}
 #| label: tbl-coefs2
 #| tbl-cap: "Table of coefficients from percentage of arena capacity models. "
-mod_pct_coefs <- map2(mod_pct, vcov_pct, lmtest::coeftest) |>
-  map(broom::tidy, conf.int = TRUE) |>
-  bind_rows(.id = "model") 
+mod_pct_coefs <- mod_pct |>
+  lmtest::coeftest(vcov_pct) |>
+  broom::tidy(conf.int = TRUE)
 
 mod_pct_coefs |>
   filter_out(str_detect(term, "factor|name")) |>  
@@ -862,7 +897,7 @@ mod_pct_coefs |>
     term = ifelse(str_detect(term, "is_aw"), "P: A'ja Wilson", term),
     term = str_to_title(str_replace_all(term, "_", " "))
   ) |>
-  arrange(term, model) |>
+  arrange(term) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
@@ -887,8 +922,7 @@ plot_attend_coefs +
 #| label: tbl-glance2
 #| tbl-cap: "Comparison of percentage of arena capacity models."
 mod_pct |>
-  map(broom::glance) |>
-  bind_rows(.id = "model") |>
+  broom::glance() |>
   knitr::kable()
 ```
 
@@ -950,11 +984,7 @@ We also considered fitting a Beta regression model with a logit link function, a
 #| label: tbl-anova
 #| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
 mod_attend |>
-  map(anova) |>
-  map(broom::tidy) |>
-  bind_rows(.id = "model") |>
-  filter_out(str_detect(term, "Residuals")) |>
-  arrange(df, term, model) |>
+  anova() |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
@@ -964,11 +994,9 @@ mod_attend |>
 #| label: tbl-anova2
 #| tbl-cap: "Analysis of variance for terms in models for percentage of arena capacity. "
 mod_pct |>
-  map(anova) |>
-  map(broom::tidy) |>
-  bind_rows(.id = "model") |>
+  anova() |>
+  broom::tidy() |>
   filter_out(str_detect(term, "NULL")) |>
-  arrange(df, term, model) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
@@ -980,68 +1008,7 @@ mod_pct |>
 #| label: fig-resids
 #| fig-cap: "Residual plots for models. "
 #| layout-ncol: 2 
+#| eval: false
 mod_attend |>
   map(plot, ask = FALSE)
-```
-
-### Tobit modeling
-
-```{r}
-#| eval: false
-
-wnba_sun <- wnba_df |>
-  filter(name_current == "Connecticut Sun")
-
-ggplot(data = wnba_sun, aes(y = attendance, x = z_quality_of_play, color = is_sellout)) +
-  geom_point() +
-  facet_wrap(vars(arena))
-
-mod_simple <- lm(
-  log(attendance) ~ (I(z_quality_of_play) + I(z_uncertain_outcome) + I(z_loss_aversion)) + factor(season_id) + factor(wday(game_date)) + factor(month(game_date)) + is_cc + is_aw, 
-  data = wnba_sun,
-  na.action = "na.exclude"
-)
-
-summary(mod_simple)
-plot(mod_simple, which = 1)
-
-wnba_sun <- wnba_sun |>
-  mutate(y_hat_simple = exp(fitted(mod_simple)))
-
-ggplot(data = wnba_sun, aes(x = attendance, y = y_hat_simple, color = is_sellout)) +
-  geom_abline(slope = 1, linetype = 3) + 
-  geom_point() +
-  facet_wrap(vars(arena))
-```
-
-```{r}
-#| eval: false
-library(VGAM)
-
-mod_tobit <- vglm(
-  mod_simple$call,
-  family = tobit(Upper = ifelse(wnba_sun$is_sellout, log(wnba_sun$attendance), Inf), imethod = 2), 
-  data = wnba_sun,
-  na.action = "na.exclude"
-)
-
-summary(mod_tobit)
-
-wnba_sun <- wnba_sun |>
-  mutate(y_hat_tobit = exp(fitted(mod_tobit)))
-
-ggplot(data = wnba_sun, aes(x = attendance, y = y_hat_tobit, color = is_sellout)) +
-  geom_abline(slope = 1, linetype = 3) + 
-  geom_point() +
-  facet_wrap(vars(arena))
-
-ggplot(data = wnba_sun, aes(y = y_hat_simple, x = y_hat_tobit, color = is_sellout)) +
-  geom_abline(slope = 1, linetype = 3) + 
-  geom_point() +
-  facet_wrap(vars(name_current))
-
-ggplot(data = wnba_sun, aes(x = attendance - y_hat_tobit, y = y_hat_tobit, color = is_sellout)) +
-  geom_abline(slope = 1, linetype = 3) + 
-  geom_point() +
-  facet_wrap(vars(arena))
 ```
