@@ -37,7 +37,7 @@ keywords:
   - WNBA
   - Game Attendance
 abstract: |
-  This paper examines how the relationship between team quality, game quality, and attendance has changed over the history of the WNBA. In general, the literature expects that stronger teams will see higher live game attendance in professional sports. However, previous research and analyst commentary has cast doubt on the strength of the relationship between team strength and game attendance in the WNBA. Our study improves upon previous research by studying attendance in the broader context of the league's growth during 1997-2025, finding that the factors that drive fan demand have evolved as the league has matured. We test whether three leading theories of fan behavior- quality of play, loss aversion, and outcome uncertainty- have become more important drivers of attendance as the league has grown. We use game-level attendance data reported directly by the WNBA from the “Across the Timeline: WNBA League Attendance Dashboard” as well as team ELO ratings and game-by-game home win probabilities and find that in recent years fans are increasingly likely to attend games in response to these factors. ELO ratings and win probabilities offer a significant advantage to other measures of team strength or outcome likelihood because they are dynamic and incorporate information available up to the date of each game. Our results suggest that the WNBA is entering a new era in which fans are choosing to attend games to watch good basketball rather than novelty-driven interest or broader support for women's sports.
+  We examine how the relationship between team quality, game quality, and attendance has changed over the history of the WNBA. Previous research suggests that stronger professional sports teams draw higher live game attendance. However, there is ongoing doubt about the extent to which that relationship holds in the WNBA. Our study improves upon previous research by modeling attendance in the broader context of the league's growth from 1997-2025, finding that the factors that drive fan demand have evolved as the league has matured. We test whether three leading theories of fan behavior---quality of play, loss aversion, and outcome uncertainty---have become more important drivers of attendance as the league has grown. We use game-level attendance data reported directly by the WNBA as well as team Elo ratings and game-by-game home win probabilities and find that in recent years fans are increasingly likely to attend games in response to these factors. Elo ratings and win probabilities offer a significant advantage to other measures of team strength or outcome likelihood because they are dynamic and incorporate information available up to the date of each game. Our results suggest that the WNBA is entering a new era in which fans are choosing to attend games to watch good basketball rather than novelty-driven interest or broader support for women's sports.
   
   
 key-points:
@@ -46,6 +46,7 @@ date: last-modified
 bibliography: [pkgs.bib, references.bib]
 number-sections: true
 ---
+
 ```{r}
 #| message: false
 library(tidyverse)
@@ -119,55 +120,124 @@ wnba_gl |>
 
 ## Introduction {#sec-intro}
 
-In the years prior to the 2020 WNBA collective bargaining agreement (CBA), NBA Commissioner Adam Silver publicly characterized the women’s league as unpopular and unprofitable [@garcia2020betting]. Again during the CBA renegotiations in 2025, NBA and WNBA leadership made similar negative claims about the women’s league’s long term viability. While league leadership has been ironically pessimistic about the health of the WNBA in recent years, their claims stand in tension with recent trends: the league has enjoyed a significant increase in attendance and fan interest in the past several seasons.
+In the years prior to the 2020 WNBA collective bargaining agreement (CBA), NBA Commissioner Adam Silver publicly characterized the women’s league as unpopular and unprofitable [@garcia2020betting]. 
+Again during the CBA renegotiations in 2025, NBA and WNBA leadership made similar negative claims about the women’s league’s long term viability. 
+While leadership has been ironically pessimistic about the health of the WNBA in recent years, their claims stand in tension with recent trends: the league has enjoyed a significant increase in attendance and fan interest in the past several seasons.
 
-While this trend is encouraging for anyone interested in the success of the WNBA, breaking down further the underlying components of this trend is necessary both to explain and sustain this growth. For decades, league officials and sports economists have debated the primary drivers of game attendance, identifying game-related and market-related factors impacting fan interest and game attendance. Much of this research, beginning with foundational work in the 1970s, assumes that fans are more likely to attend games when the home team is expected to do well. This relationship is widely tested and supported in men’s professional sports, but women’s leagues and the WNBA in particular are still largely underresearched. As a relatively young league with rapid growth in viewership [@wnba2024recordseason] but limited publicly available financial data, game attendance remains the most readily available proxy variable for public interest in the WNBA. In this paper we set out to determine how the underlying causes shaping game attendance work to explain these more recent trends, and specifically whether on-court factors are becoming more important to WNBA game attendance in recent years.
+While this trend is encouraging for anyone interested in the success of the WNBA, further breaking down the underlying components of this trend is necessary both to explain and sustain this growth. 
+For decades, league officials and sports economists have debated the primary drivers of game attendance, identifying game-related and market-related factors impacting fan interest and game attendance. 
+Much of this research, beginning with foundational work in the 1970s, assumes that fans are more likely to attend games when the home team is expected to do well. 
+This relationship is widely tested and supported in men’s professional sports, but women’s leagues and the WNBA in particular are still largely underresearched.
+As a relatively young league with rapid growth in viewership [@wnba2024recordseason] but limited publicly available financial data, game attendance remains the most readily available proxy for public interest in the WNBA. 
+In this paper we set out to determine how the underlying causes shape game attendance and explain these more recent trends. 
+Specifically, we focus on whether on-court factors are becoming more important to WNBA game attendance in recent years.
 
 ### Existing scholarship on team performance and game attendance
-A key line of research in sports economics links fan demand to expectations about game outcomes. Early work such as the uncertainty-of-outcome hypothesis suggests that attendance is higher when game results are less predictable, increasing perceived excitement. In their 2014 paper, Coates et al. use more recent behavioral economics models to suggest that people evaluate gains and losses relative to a reference point and tend to dislike losses more than they like equivalent wins [@CoatesHumphreysZhou2014]. They argue that applying this idea of loss aversion may better explain why fans choose to go games than the uncertainty of outcome hypothesis. They use MLB live-game attendance data to find attendance patterns consistent with the hypothesis that fans are less likely to attend games in which they expect the home-team to lose [@CoatesHumphreysZhou2014]. These frameworks together suggest that attendance decisions are sensitive not only to team quality, but to expectations about competitive performance and likely game outcomes.
+
+A key line of research in sports economics links fan demand to expectations about game outcomes. 
+Early work such as the uncertainty-of-outcome hypothesis suggests that attendance is higher when game results are less predictable, increasing perceived excitement. 
+
+::: {.callout-note title="Ben"}
+We need a citation for the Uncertainty of Outcome Hypothesis
+:::
+
+@CoatesHumphreysZhou2014 use more recent behavioral economics models to suggest that people evaluate gains and losses relative to a reference point and tend to dislike losses more than they like equivalent wins. 
+They argue that applying this idea of loss aversion may better explain why fans choose to go games than the uncertainty of outcome hypothesis. 
+They use MLB live-game attendance data to find patterns consistent with the hypothesis that fans are less likely to attend games in which they expect the home team to lose [@CoatesHumphreysZhou2014]. 
+These frameworks together suggest that attendance decisions are sensitive not only to team quality, but to expectations about competitive performance and likely game outcomes.
+
+::: {.callout-note title="Ben"}
+Let's say more about expected utility and non-linearity
+:::
 
 In the first study in sports economics that sought to empirically identify the factors that affected attendance, @noll1974attendance considered data from MLB, the NFL, NHL, NBA and ABA (American Basketball Association) for the 1969-70 and 1970-71 seasons and found that demand was a function of population, interactions of income with star players, team win percentage, and per capita income. 
-Multiple subsequent studies on men’s professional team sports continued to find a statistically significant correlation between team quality and attendance.  
+Multiple subsequent studies on men’s professional team sports continued to find a statistically significant correlation between team quality and attendance.
 Differences in the literature over how to measure team quality (wins, wins lagged, number of championships in past years, win probability, star power), attendance (logs, lags, linear regression or censored), the inclusion of control variables and non-linear forms also emerged [@wiseman2003team; @woltring2018attendance; @kim2023winning; @deschriver2002determinants; @paul2019attendance].
 
 The relationship between attendance and winning percentage has been examined, but such
 studies often look at winning percentage as causation for attendance. 
+
+::: {.callout-note title="Ben"}
+Winning percentage *is* a measure of team strength. So how is this different than what we're saying above? 
+:::
+
 @davis2008interaction and @horowitz2007if both found that attendance and winning percentage were related. 
 Horowitz concluded a bidirectional relationship between the two, while Davis suggested that causation runs from winning percentage to attendance. 
 In a following study, @davis2009analyzing found winning percentage as a significant determinant of attendance for 12 National League teams; though the study did not establish causation both ways. 
-@lemke2010estimating found attendance increases as home team win probability increases. There is evidence that causation may run from attendance to winning percentage, but the bulk of the literature has been researched the other way.
+@lemke2010estimating found attendance increases as home team win probability increases. 
+There is evidence that causation may run from attendance to winning percentage, but the bulk of the literature has been researched the other way.
+
+::: {.callout-note title="Ben"}
+What evidence? We should cite something if there is evidence. 
+
+Also, really? Attedance causes winning percentage to rise???
+:::
+
 	
-Finally, situating these revenue models within the broader league structure, sports economists have written extensively about the relationship between winningness and team revenue, particularly about how competitive balance benefits teams across the league in generating revenue. While teams and fans want to win as many games as possible, significant imbalance in winning percentages across a professional sports league will tend to decrease viewership as spectators will only watch a game if they have some uncertainty about the outcome [@PerlineNobleStoldt2018].  In their study of competitive balance in NCAA basketball, Perline et al. found that the women’s game was significantly less balanced than the men’s game, looking at the standard deviation and the range of winning percentages for teams in the women’s Division I [@PerlineNobleStoldt2018]. They hypothesize that the difference in the competitive balance of the men’s and women’s games could be one cause of lower revenue generation and attendance in the women’s game. 
+Finally, situating these revenue models within the broader league structure, sports economists have written extensively about the relationship between winningness and team revenue, particularly about how competitive balance benefits teams across the league in generating revenue. 
+
+::: {.callout-note title="Ben"}
+What revenue models??
+:::
+
+While teams and fans want to win as many games as possible, significant imbalance in winning percentages across a professional sports league will tend to decrease viewership as spectators will only watch a game if they have some uncertainty about the outcome [@PerlineNobleStoldt2018]. 
+In NCAA basketball, @PerlineNobleStoldt2018 examine the standard deviation and the range of winning percentages for teams in the women’s Division I and determine that the women’s game os significantly less balanced than the men’s game. 
+They hypothesize that the difference in the competitive balance of the men’s and women’s games could be one cause of lower revenue generation and attendance in the women’s game. 
 
 ### Why is the WNBA different?
-In their study of attendance determinants in the WNBA, Agha and Berri argue that a major reason why attendance is considerably lower at WNBA games than NBA games is that the women’s league is still in its early years, only beginning play in 1997 compared to the NBA’s 1946. To account for this, they compare attendance in the tenth season of the WNBA (2006) and the NBA (1955/56) (Agha and Berri, 2023, p. 36.)  In their respective tenth years, the WNBA average attendance per home game exceeded the NBA’s by more than 2,000 fans per game. This comparison suggests that the current disparity in attendance between the women’s and men’s league should not be interpreted as a lack of demand, but rather a sign of the league’s maturity. Considering the league’s age as a factor in demand for attendance, it is interesting to inquire further into whether patterns of fan behavior change as the league matures. Agha and Berri attempt to establish whether different forces shape demand for attendance in the WNBA and the NBA, finding that team performance was not a statistically significant predictor of game attendance in the WNBA. As noted above, this is contrary to the virtually unanimous finding in the existing scholarship for men’s leagues. However, their study only employed data from 2004 through 2017 and thus can not capture the more recent improvements in attendance shown in figure 1. They also measure a team's strength using the team's winning percentage from the previous year which raises issues because fans are more likely to respond to the more recent performance of the team. Thus, while a team’s win percentage in 2016 might have an appreciable impact on the team’s attendance at the beginning of the 2017 season, as the season wears on, this impact should consistently diminish. For this reason, we chose to use a team's ELO rating as the measure of team strength because the ELO rating updates with each game, thus more accurately reflecting the information that fans have access to in deciding to attend games.
 
-Despite the issues with Agha and Berri's study, their observation that between 2004 and 2017 the relationship between team strength and attendance in the WNBA was weak is not incorrect. The disparity between raw attendance numbers and attendance driving factors in the NBA and WNBA cannot be attributed to the age of the leagues alone. Additional important factors include: the WNBA plays during the summer months in order to promote arena use outside of the NBA season; there is less money spent on promotion; reduced media coverage; historical prejudice; arena amenities and age; and ticket prices, among others. Sport management literature also includes several studies that find a major motivation behind fandom for women’s sports leagues to be an area’s overall support for feminist issues, suggesting that fans in those areas may attend games out of political support rather than to see good basketball [@delia2020psychological; @guest2018fan; @leslie2022football]. Factors like the summer season, reduced media coverage, and the association of game attendance with feminist causes all contribute to the argument that the WNBA functions fundamentally differently to the NBA- at least in terms of attendance drivers. This conception of the WNBA as fundamentally different from the NBA is dangerous both to the league's reputation and future growth, motivating our more thorough examination of game attendance in the context of the league's history.
+@AghaBerri2023 argue that a major reason why attendance is considerably lower at WNBA games relative to NBA games is that the women’s league is still in its early years, only beginning play in 1997 compared to the NBA’s 1946. 
+To account for this, they compare attendance in the tenth season of the WNBA (2006) and the NBA (1955/56) (p. 36). 
+In their respective tenth years, the WNBA average attendance per home game exceeded the NBA’s by more than 2,000 fans per game. 
+This comparison suggests that the current disparity in attendance between the women’s and men’s league should not be interpreted as a lack of demand, but rather a sign of the league’s maturity. 
+Considering the league’s age as a factor in demand for attendance, we inquire further into whether patterns of fan behavior change as the league matures. 
+@AghaBerri2023 attempt to establish whether different forces shape demand for attendance in the WNBA and the NBA, finding that team performance was not a statistically significant predictor of game attendance in the WNBA. 
+As noted above, this is contrary to the virtually unanimous finding in the existing scholarship for men’s leagues. 
+However, their study only employed data from 2004 through 2017 and thus cannot capture the more recent improvements in attendance shown in @fig-boxplots. 
+They also measure a team's strength using the team's winning percentage from the previous year which raises issues because fans are more likely to respond to the more recent performance of the team. 
+Thus, while a team’s win percentage in 2016 might have an appreciable impact on the team’s attendance at the beginning of the 2017 season, as the season wears on, this impact should diminish. 
 
-It is reasonable to anticipate that as women’s sports mature and are perceived increasingly as a normal sports league, rather than a political concession or oddity, they will begin to assert similar fan demand characteristics. In particular, fan demand will become more responsive to team quality. Using game attendance[^attendance] and team performance data from 1997 through 2025, we test these hypotheses. In viewing more recent attendance figures for the WNBA in the context of the league’s history, we hoped to determine whether predictors of attendance have shifted over time, due to the WNBA’s relative instability as a young league. Specifically, we find that in recent years the strength of the effect of a game's uncertainty, the strength of both teams, and the likelihood of a home team win, on game attendance has increased, paralleling documented trends in men’s leagues. 
+The disparity between raw attendance numbers and attendance driving factors in the NBA and WNBA cannot be attributed to the age of the leagues alone. 
+Additional important factors include: the WNBA plays during the summer months in order to promote arena use outside of the NBA season; there is less money spent on promotion; reduced media coverage; historical prejudice; poorer arena amenities and age; and ticket prices, among others. 
 
-[^attendance]: Note that, as in most sports leagues, there is always the possibility of finagling with game attendance figures. The WNBA appears to give attendance counting instructions to teams that define attendance as tickets out, including total ticket sales, plus complimentary tickets and promotions. There is considerable room for these factors to be manipulated, rendering the possibility of noise in the attendance figures we use.
+::: {.callout-note title="Ben"}
+Why would ticket prices decrease attendance? Aren't they lower in the WNBA? 
+:::
+
+Sport management literature also includes several studies that find a major motivation behind fandom for women’s sports leagues to be an area’s overall support for feminist issues, suggesting that fans in those areas may attend games out of political support rather than to see good basketball [@delia2020psychological; @guest2018fan; @leslie2022football]. 
+Factors like the summer season, reduced media coverage, and the association of game attendance with feminist causes all contribute to the argument that the WNBA functions fundamentally differently to the NBA---at least in terms of attendance drivers. 
+This conception of the WNBA as fundamentally different from the NBA is dangerous both to the league's reputation and future growth, motivating our more thorough examination of game attendance in the context of the league's history.
+
+### Our contribution
+
+It is reasonable to anticipate that as women’s sports mature and are perceived increasingly as a normal sports league (rather than a political concession or oddity) they will begin to assert similar fan demand characteristics. 
+In particular, fan demand should become more responsive to team quality. 
+Using game attendance and team performance data from 1997 through 2025, we test these hypotheses. 
+In viewing more recent attendance figures for the WNBA in the context of the league’s history, we determine whether predictors of attendance have shifted over time. 
+Specifically, we find that in recent years the strength of the effect of a game's uncertainty, the strength of both teams, and the likelihood of a home team win, on game attendance has increased, paralleling documented trends in men’s leagues. 
+
 
 ## Data {#sec-data}
 
-### Game logs and attendance
+### Game logs
+
+[^attendance]: Note that, as in most sports leagues, there is always the possibility of finagling with game attendance figures. The WNBA appears to give attendance counting instructions to teams that define attendance as tickets out, including total ticket sales, plus complimentary tickets and promotions. There is considerable room for these factors to be manipulated, rendering the possibility of noise in the attendance figures we use.
 
 Our analysis is based on game-level data that spans WNBA history, beginning in 1997 and continuing through the end of the 2025 season. 
 Our final data set contains observations from `r format(nrow(wnba_gl), big.mark = ",")` games.
 
-First, we collected game-level attendance data from [@AcrossTheTimeline_WNBA_Attendance], an online repository for women's basketball data. The site collects attendance numbers directly from the league's records. 
+First, we collected game-level attendance data from [@AcrossTheTimeline], an online repository for women's basketball data that collects attendance numbers directly from the league's records[^attendance]. 
 Attendance data was unavailable for only `r nrow(filter(wnba_gl, is.na(attendance)))` games, while (due to the COVID-19 pandemic) `r nrow(filter(wnba_gl, attendance == 0))` games (accurately) recorded attendance of 0. 
-Because the arenas WNBA teams play in vary widely in size-- the New York Liberty alone have called both the Barclays Center (17,732 seat capacity) and the Westchester County Center (2,300 seat capacity) home in recent years-- we contextualize raw attendance numbers by approximating the capacity of each game venue. 
-Because accurate records of arena configurations and capacities were difficult to obtain (particularly for venues not still in use) we approximated the practical capacity of each space by pulling the maximally attended game for each venue. 
+The arenas in which WNBA teams play vary widely in size.
+The New York Liberty alone have called both the Barclays Center (17,732 seat capacity) and the Westchester County Center (2,300 seat capacity) home in recent years. 
 While teams have many reasons they might choose to play for a sold-out crowd in a smaller arena, smaller venue size will also by nature constrain attendance, making its consideration in our model important.
-Using our definition, we deemed `r round(100 * nrow(filter(wnba_gl, is_sellout)) / nrow(wnba_gl), 1)`% of the games as sellouts. 
 
-Second, we collected game-level performance data from the **wehoop** R package [@hutchinson_gilani_2021_wehoop], which uses the official WNBA API. The game-level performance data include
-These data include the final score of the game. 
+Second, we collected game-level performance data from the **wehoop** R package [@hutchinson_gilani_2021_wehoop], which uses the official WNBA API. 
+These data include the final score of the game, among other performance metrics. 
 We also used the **wehoop** package to identify whether Caitlin Clark and/or A'ja Wilson played more than 0 minutes in the game. 
 
 @tbl-attendance shows a sample of the data. 
-While many other variables are omitted from the table, we note that the attendance, the teams playing in the game, the outcome, the arena, and whether Clark or Wilson played in the game, are recorded. 
+While many other variables are omitted from the table, we note that the attendance, the teams playing in the game, the outcome, the arena, and whether Clark or Wilson played in the game are recorded. 
 
 ```{r}
 #| label: tbl-attendance
@@ -201,9 +271,10 @@ wnba_gl |>
   )
 ```
 
+### Attendance
 
 @fig-boxplots shows the distribution of attendance across all seasons, with a logarithmic scale on the vertical axis. 
-There is no attendance data from 2020, because all games that year were played in the WNBA bubble due to the COVID-19 pandemic, and some games in 2021 continued to be played with artificially low attendance.  
+There is no attendance data from 2020, because all games that year were played in the WNBA bubble due to the COVID-19 pandemic, and some games in 2021 were played with artificially low attendance.  
 
 ```{r}
 wnba_summary <- wnba_gl |>
@@ -221,12 +292,16 @@ attend_pct_increase <- 100 * (attend_hi / attend_prev_hi - 1)
 
 Several broad observations can be made from @fig-boxplots. 
 First, after some initial enthusiasm during the first three years of the league, attendance largely plateaued or steadily but slightly declined from 2000 to 2017. 
+[Note that @AghaBerri2023 used only data through 2017.] 
 The two years preceding the pandemic (2018-2019) had notably lower attendance. 
-Since the pandemic, attendance has rebounded, exceeding its initial levels in 2024 and reaching new heights in 2025. 
+However, since the pandemic, attendance has rebounded, exceeding its initial levels in 2024 and reaching new heights in 2025. 
 In fact, average WNBA attendance in 2025 was `r format(round(attend_hi), scientific = FALSE, big.mark = ",")`, which was `r round(attend_pct_increase, 1)`% higher than the previous high in 1998. 
 
 These last two years coincide with the arrival of Caitlin Clark, the 2024 Rookie of the Year Award winner who is widely regarded as a generational talent. 
 Disentangling the "Caitlin Clark effect" from the league's overall attendance trends is one of our goals. 
+To that end, we identified all games in which Clark and A'ja Wilson played. 
+Wilson is a four-time WNBA MVP and three-time league champion who is currently viewed as the league's best player. 
+As a superior played with less celebrity, Wilson's effect on attendance relative to Clark's provides additional benchmarking possibilities. 
 
 ```{r}
 #| label: fig-boxplots
@@ -247,39 +322,51 @@ plot_attend_eda +
   scale_y_log10()
 ```
 
-@fig-boxplots-capacity shows the distribution of attendance as a percentage of the arena's capacity. 
-Although we recorded reported arena capacities, those capacities change over time, and some games had attendance that exceeded the arena's reported capacity. 
-Instead, we computed the percentage as a ratio of the attendance to the larger of the reported capacity, or the maximum recorded attendance at that arena in the sample.[^ones] 
+### Arena capacity
 
-[^ones]: These modifications reduced the number of 1's in the sample, which was useful mathematically during modeling. 
+While we recorded reported arena capacities, those capacities were difficult to obtain for venues not in current use, they change over time, and some games had attendance that exceeded the arena's reported capacity. 
+Thus, we estimate each arena's capacity as the larger of the reported capacity, or the maximum recorded attendance at that arena in the sample. 
+This ensures that our figures for the percentage of estimated arena capacity are bounded above by 1. 
+
+We designate a sellout as a game in which the attendance exceeds 92% of the arena's estimated capacity.
+Using our definition, we deem `r round(100 * nrow(filter(wnba_gl, is_sellout)) / nrow(wnba_gl), 1)`% of the games to be sellouts, with nearly half of those occurring in the past two seasons. 
+`r nrow(filter(wnba_gl, is_sellout, is_cc == 1))` of Clark's `r nrow(filter(wnba_gl, is_cc == 1))` games have sold out. 
+
+@fig-boxplots-capacity shows the distribution of attendance as a percentage of the arena's estimated capacity. 
+
 
 ```{r}
 #| label: fig-boxplots-capacity
-#| fig-cap: "Distribution of WNBA game attendance as a percentage of arena capacity by season. Caitlin Clark's games in 2024-2025 are separated by color. "
+#| fig-cap: "Distribution of WNBA game attendance as a percentage of estimated arena capacity by season. Clark and Wilson games are highlighted by color. "
 plot_attend_eda +
   aes(y = pct_capacity) +
-  scale_y_continuous("Attendance as Percentage of Arena Maximum")
+  scale_y_continuous("Attendance as Percentage of Estimated Arena Capacity")
 ```
 
 
 ### Estimating team strength {#sec-elo}
 
-We used the game-level results data to model the strength of each WNBA team as a time series. 
+We used the game-level results data to model the evolution of the strength of each WNBA team over time. 
 Measuring team strength is necessary to test our hypothesis that attendance is in part driven by the desire of fans to see quality basketball. 
-We considered season-to-date winning percentage and a rolling 44-game (the length of a typical WNBA season) winning percentage before settling on Elo rating [@Elo1978].
-Originally developed for rating chess players, Elo rating is well-understood in sports analytics as a measure of team strength that updates after each game, and---unlike winning percentage and rolling winning percentage---takes into account not only the outcome but also the estimated team strength of both teams. This means that beating a team with a higher Elo rating has a greater positive effect than beating a team with a lower Elo rating, reflecting upsets with more nuance than the win-loss record.
+We considered season-to-date winning percentage and a rolling 44-game (the length of a typical WNBA season) winning percentage before settling on Elo rating [@Elo1978], because Elo rating updates with each game, and thus more accurately reflects the information that fans have access to in deciding to attend games.
+Originally developed for rating chess players, Elo rating is well-understood in sports analytics as a measure of team strength that updates after each game, and---unlike winning percentage and rolling winning percentage---takes into account not only the outcome but also the previous estimated team strength of both teams. 
+This means that beating a team with a higher Elo rating has a greater positive effect than beating a team with a lower Elo rating, imbuing outcomes with more nuance than simple win-loss record.
 
-Let $\theta_{i}(t)$ be the strength of team $i$ at time $t$, where Elo ratings are typically centered at 1500. Then if the probability that team $i$ beats team $j$ is modeled by a logistic curve with base 10 and scale factor 400, the win probability is given by:
+Let $\theta_{i}(t)$ be the strength of team $i$ at time $t$, where Elo ratings are centered at 1500. 
+Then if the probability that team $i$ beats team $j$ is modeled by a logistic curve with base 10 and scale factor 400, the win probability is given by:
 $$
-\Pr(i \text{ beats }j \text{ at time }t) = \frac{1}{1 + 10^{\frac{\theta_{j}(t) -  \theta_{i}(t)  }{400}}} \,.
+p_{ij}(t) = \Pr(i \text{ beats }j \text{ at time }t) = \frac{1}{1 + 10^{\frac{\theta_{j}(t) -  \theta_{i}(t)  }{400}}} \,.
 $$
 
-Each team starts the 1997 season with $\hat{\theta}_{i}(0) = 1500$, and following each game, team $i$'s rating is updated via the formula
+Each team $i$ starts the 1997 season with $\hat{\theta}_{i}(0) = 1500$, and following each game, team $i$'s rating is updated via the formula
 $$
-  \hat{\theta}_{i}(t+1) = \hat{\theta}_{i}(t) + K \cdot \left( I(i \text{ beats } j)  - \Pr(i \text{ beats }j \text{ at time }t) \right) 
+  \hat{\theta}_{i}(t+1) = \hat{\theta}_{i}(t) + K \cdot \left[ I(i \text{ beats } j)  - \hat{p}_{ij}(t) \right] 
 $$
 where $I(i \text{ beats } j)$ is an indicator variable that is 1 if $i$ beats $j$ and $-1$ if $j$ beats $i$, and $K = 32$ is a constant that controls how sensitive the ratings are to each game. 
-If team $i$ had a 78% probability of beating team $j$ and wins, their rating will improve by $32\cdot(1-0.78) = 7.04$, while team $j$'s rating will decrease by the same amount. 
+For example, suppose team $i$ has an Elo rating of `r (i <- 1600)` and team $j$ `r (j <- 1450)`. 
+Then team $i$  has a `r p <- 1/(1 + 10^((j-i) / 400)); round(p, 3)` probability of beating team $j$ and if they win, their rating will improve by $32 \cdot (1 - \text{`r round(p, 3)`}) = \text{`r round(32 * (1 - p), 2)`}$ points, while team $j$'s rating will decrease by the same amount. 
+Note that if team $j$ upsets team $i$, the corresponding changes in rating will be `r round(32 * (1 - (1 - p)), 2)` points.
+This larger amount reflects the less likely outcome. 
 
 We fit Elo ratings using the `r pkg("elo")` package for R. 
 @fig-elo shows the evolution of Elo rating $\hat{\theta}_i(t)$ by franchise for the 12 teams who were active during the 2024 season. 
@@ -302,13 +389,12 @@ wnba_gl |>
 
 ### Estimating home win probability
 
-The pregame Elo ratings estimated above can then be plugged back into the win probability formula to estimate the home teams's likelihood of winning. 
 We also added a home court advantage equivalent to 60 points (of Elo rating) to our home win probability model, so that:
 $$
-  \hat{p}_{ij}(\hat{\theta}_i(t), \hat{\theta}_j(t), t) = \Pr(i \text{ beats }j \text{ at time }t \text{ at home}) = \frac{1}{1 + 10^{\frac{\hat{\theta}_{j}(t) - \left( \theta_{i}(t) + 60 \right)  }{400}}} \,.
+  \hat{p}_{ij}(t) = \Pr(i \text{ beats }j \text{ at time }t \text{ at home}) = \frac{1}{1 + 10^{\frac{\hat{\theta}_{j}(t) - \left( \hat{\theta}_{i}(t) + 60 \right)  }{400}}} \,.
 $$
 We arrived at 60 points by iteratively calibrating the win probabilities to match the observed frequencies by minimizing the Brier score. 
-While the model was slightly less accurate at the extremes, it fit very well in the middle where most of the games occur (see @tbl-calibrate). 
+The model fit very well for most of the games (see @tbl-calibrate). 
 
 ```{r}
 #| label: tbl-calibrate
@@ -981,8 +1067,8 @@ We also considered fitting a Beta regression model with a logit link function, a
 
 
 ```{r}
-#| label: tbl-anova
 #| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
+#| eval: false
 mod_attend |>
   anova() |>
   janitor::clean_names(case = "title") |>
@@ -1001,14 +1087,3 @@ mod_pct |>
   knitr::kable(digits = 3)
 ```
 
-
-### Residual analysis of attendance models {#sec-resid-attend}
-
-```{r}
-#| label: fig-resids
-#| fig-cap: "Residual plots for models. "
-#| layout-ncol: 2 
-#| eval: false
-mod_attend |>
-  map(plot, ask = FALSE)
-```
