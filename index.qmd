@@ -1,5 +1,5 @@
 ---
-title: "Winning and Attendance in the WNBA"
+title: "Everyone Watches Women's Basketball: Attendance and Fan Engagement in the WNBA"
 author:
   - name: Gabriela Eastwood
     corresponding: true
@@ -580,7 +580,7 @@ As time-related control variables, we include the the season ($\tau_1$), the mon
 To control for city-related effects, we also include the team name ($\phi_1$), as well as the metropolitan area median income ($\phi_2$, in thousands of USD) and population ($\phi_3$, in millions) of the home city[^median].
 Finally, we include an indicator based on whether Caitlin Clark or A'ja Wilson played more than 0 minutes in the game ($\chi_1, \chi_2$, respectively). 
 
-[^median]: The data for the population and the median income of cities comes from the American Community Survey, access to which was provided in R by the `r pkg("tidycensus")` package. Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), we chose to use the median of the population and median income across all of the available years of data as a constant value. While this does mean that the population growth in cities like Phoenix or Las Vegas is ignored, we doubt this will meaningfully affect our results, especially since the team fixed effect should capture some of that variability. 
+[^median]: The data for the population and the median income of cities comes from the American Community Survey, access to which was provided in R by the `r pkg("tidycensus")` package. Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), impute missing values using a cubic spline for interpolated values and the last observation carried forward (or backward) for extraploted values.  
 
 ### Interaction
 
@@ -622,7 +622,7 @@ Our general regression model for attendance is:
   \ln{y} &= \beta_0 + \underbrace{\beta_2 Z_1 + \beta_3 Z_2 + \beta_4 Z_3}_{\text{fan engagement}} \\
     &+ \underbrace{\beta_5 \tau_1 + \beta_6 \tau_2 + \beta_7 \tau_3}_{\text{time-related}} + \underbrace{\beta_8 \phi_1 + \beta_9 \phi_2 + \beta_{10} \phi_3}_{\text{ city-related }} \\
     &+ \underbrace{\beta_{11} \chi_1 + \beta_{12} \chi_2}_{\text{player-related}} + \underbrace{\beta_{13} Z_1 \tau_1 + \beta_{14} Z_2 \tau_2 + \beta_{15} Z_3 \tau_3}_{\text{interaction}} + \epsilon \\
-    &= \mathbf{X} \mathbf{\beta} + \epsilon \,,
+    &= \symbf{X} \symbf{\beta} + \epsilon \,,
 \end{align*}
 where $\beta_j \in \mathbb{R}$ for $j = \{0, 1, 2, 3, 11, 12\}$, while the other $\beta_j$ coefficients are vectors of length equal to the number of factor levels in their corresponding categorical explanatory variable minus 1. 
 Most notably $\beta_5$ and $\beta_8$ have `r length(levels(factor(wnba_df$season_id))) - 1` values (corresponding to each season after 1997) and $\beta_5$ has `r length(levels(factor(wnba_df$name_current))) - 1` values (corresponding to each team). 
@@ -658,9 +658,9 @@ Need to add details about Tobit modeling.
 We fit the same model with $\gamma$ as the response, but because our response variable $\gamma$ is constrained between 0 and 1 and has significant mass at 1 exactly, we use the Papke-Wooldridge fractional response model [@papke1996econometric].
 This is equivalent to fitting a generalized linear model with a logit link function and applying HC1 sandwich estimators [@mackinnon1985some] for the covariance matrix, which we accomplish using the `r pkg("sandwich")` package in R. 
 $$
-  \mathbb{E}{(\gamma | \mathbf{X})} = G(\mathbf{X} \mathbf{\eta}) \,,
+  \mathbb{E}{(\gamma | \symbf{X})} = G(\symbf{X} \symbf{\eta}) \,,
 $$
-where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\mathbf{X}$ is as above, and $\mathbf{\eta}$ has the same structure as $\mathbf{\beta}$ defined above. 
+where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\symbf{X}$ is as above, and $\symbf{\eta}$ has the same structure as $\symbf{\beta}$ defined above. 
 
 
 ## Results
@@ -736,7 +736,7 @@ beta_quality <- mod_attend_coefs |>
   pull(estimate)
 
 mod_attend_coefs |>
-  filter_out(str_detect(term, "factor|name_current")) |>
+  filter_out(str_detect(term, "factor|name_current|character")) |>
   select(term = original_term, estimate, std.error, statistic, p.value, conf.low, conf.high) |>
   mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
@@ -751,6 +751,10 @@ The strong support for quality of play (relative to uncertainty of outcome and l
 Games featuring Caitlin Clark were associated with significantly higher attendance, while A'ja Wilson's presence was associated with a smaller but still nontrivial increase in attendance.
 The expected attendance more than doubles (i.e., is multiplied by $\exp(\text{`r round(min_cc, 3)`})$ = `r min_cc |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
 The corresponding change in attendance for A'ja Wilson---by most accounts a better player than Clark---is multiplying by just `r mod_attend_coefs |> filter(term == "is_aw") |> pull(estimate) |> min() |> exp() |> round(2)`.
+
+::: {.callout-note title="Ben"}
+Need to provide an interpretation for the Tobit coefficient. 
+:::
 
 Among the control variables, median income and metro area population had small negative effects after controlling for other variables. 
 
@@ -941,7 +945,7 @@ mod_pct_coefs <- mod_pct |>
   broom::tidy(conf.int = TRUE)
 
 mod_pct_coefs |>
-  filter_out(str_detect(term, "factor|name")) |>  
+  filter_out(str_detect(term, "factor|name|character")) |>  
   mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
   janitor::clean_names(case = "title") |>
@@ -1086,14 +1090,11 @@ mod_attend |>
 ```{r}
 #| label: tbl-anova-tobit
 #| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
-#| eval: false
 mod_attend |>
   anova() |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
-
-
 
 ### Model fitting metrics for percentage of arena capacity model {#sec-fit-papke}
 
