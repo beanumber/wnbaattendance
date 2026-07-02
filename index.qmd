@@ -590,7 +590,7 @@ To capture these changes, we include interaction terms between our measures of f
 ### Model formulation for attendance {#sec-mod-attend}
 
 ```{r}
-f_time <- "factor(season_id) + factor(wday(game_date)) + factor(month(game_date))"
+f_time <- "factor(season_id) + as.character(wday(game_date, label = TRUE, abbr = FALSE)) + as.character(month(game_date, label = TRUE, abbr = FALSE))"
 f_place <- "factor(name_current) + median_income + metro_pop + is_cc + is_aw"
 f_exp <- c("(I(z1_quality_of_play) + I(z2_uncertain_outcome) + I(z3_loss_aversion))")
 
@@ -666,9 +666,7 @@ where $G(z) = \frac{e^z}{1 + e^z}$ is the (vectorized) logistic function, $\math
 ## Results
 
 In keeping with recent guidance from @wasserstein2016asa and @wasserstein2019moving, and with a sample size of over 5000 observations and dozens of coefficients, we are less interested in the p-values shown in @tbl-coefs, and focus our attention on the magnitude and practical impact of the fitted coefficients. 
-(All variables except for population achieve "statistical significance" at the 5\%-level, as shown in @tbl-anova). 
-Residual analysis for the attendance models are shown in @sec-resid-attend. 
-
+(All variables except for population achieve "statistical significance" at the 5\%-level, as shown in @tbl-anova-tobit). 
 
 
 ```{r}
@@ -699,39 +697,26 @@ library(broom)
 tidy.vglm <- broom.helpers::tidy_vgam
 ```
 
-```{r}
-mod <- mod_attend
-coef_df <- tidy(mod)
-int_df <- coef_df |>
-  filter(str_detect(term, ":factor\\(season_id\\)"))
-
-int_df <- int_df |>
-  mutate(
-    variable = str_extract(term, "^[^:]+"),
-    season = str_extract(term, "\\d{4}") |> as.integer()
-  )
-
-main_df <- coef_df |>
-  filter(str_detect(term, "^z[0-9]_")) |>
-  mutate(
-    variable = term,
-    season = min(wnba_df$season_id, na.rm = TRUE)
-  )
-
-slopes <- bind_rows(
-  main_df |> select(variable, season, estimate = estimate),
-  int_df |> transmute(
-    variable,
-    season,
-    estimate = estimate
-  )
-) |>
-  arrange(variable, season)
-```
-
 ### Modeling attendance {#sec-attend}
 
 #### Baseline effects
+
+@tbl-coefs reports estimates from the Tobit model. 
+Because each measure of fan engagement interacts with season, the reported coefficients for quality of play, outcome uncertainty, and loss aversion represent their estimated effects for the reference levels: a home game for the Atlanta Dream taking place on a Sunday in May (in which neither Clark nor Wilson is playing).
+The interaction terms, discussed in @sec-annual, capture how these relationships evolve over time. 
+
+```{r}
+#| label: sanitize
+sanitize_terms <- function(x) {
+  x |>
+    str_replace_all("factor\\(name_current\\)", "Team: ") |>
+    str_replace_all("as.character\\(wday\\(game_date\\, label = TRUE\\, abbr = FALSE\\)\\)", "Day: ") |>
+    str_replace_all("as.character\\(month\\(game_date\\, label = TRUE\\, abbr = FALSE\\)\\)", "Month: ") |>
+    str_replace_all("is_cc", "Player: Caitlin Clark") |>
+    str_replace_all("is_aw", "Player: A'ja Wilson")
+}
+```
+
 
 ```{r}
 #| label: tbl-coefs
@@ -753,47 +738,45 @@ beta_quality <- mod_attend_coefs |>
 mod_attend_coefs |>
   filter_out(str_detect(term, "factor|name_current")) |>
   select(term = original_term, estimate, std.error, statistic, p.value, conf.low, conf.high) |>
-  mutate(
-#    term = ifelse(str_detect(term, "I\\("), paste0(model, ": fan engagment"), term),
-    term = ifelse(str_detect(term, "is_cc"), "P: Caitlin Clark", term),
-    term = ifelse(str_detect(term, "is_aw"), "P: A'ja Wilson", term),
-    term = str_to_title(str_replace_all(term, "_", " "))
-  ) |>
+  mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
 ```
 
-@tbl-coefs reports estimates from the Tobit model. 
-Because each measure of fan engagement interacts with season, the reported coefficients for quality of play, outcome uncertainty, and loss aversion represent their estimated effects in the reference season (1997). 
-The interaction terms, discussed in @sec-annual, capture how these relationships evolve over time. 
-In the reference season, the evidence for the quality of play ($f_1$) and uncertainty of outcome ($f_2$) hypotheses is weak, with those coefficients barely moving the needle. 
-For the quality of play hypothesis, in 1997, a 1 standard deviation increase in the quality of play is associated with a modest `r round(100 * (exp(beta_quality/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
+In the reference season, the evidence for loss aversion ($Z_3$) and uncertainty of outcome ($Z_2$) is weak, with those coefficients being of little significance, either practically or statistically. 
+The coefficient for quality of play (which *is* statistically significant) suggest that in 1997, a 1 standard deviation increase in the quality of play (as measured by the product of the Elo ratings) is associated with a modest `r round(100 * (exp(beta_quality/10) - 1), 2)`% increase in the expected attendance, after controlling for our other factors. 
+The strong support for quality of play (relative to uncertainty of outcome and loss aversion) is a key finding. 
 
-Among the control variables, games featuring Caitlin Clark were associated with significantly higher attendance, while A'ja Wilson's presence was associated with a smaller but still nontrivial increase in attendance.
-Even for the smallest coefficient in @tbl-coefs, the expected attendance more than doubles (i.e., is multiplied by $\exp(\text{`r round(min_cc, 3)`})$ = `r min_cc |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
+Games featuring Caitlin Clark were associated with significantly higher attendance, while A'ja Wilson's presence was associated with a smaller but still nontrivial increase in attendance.
+The expected attendance more than doubles (i.e., is multiplied by $\exp(\text{`r round(min_cc, 3)`})$ = `r min_cc |> exp() |> round(2)`) when Clark plays in the game, and this is *after* controlling for the Indiana Fever team effect, the level of fan engagement, and the season effects! 
 The corresponding change in attendance for A'ja Wilson---by most accounts a better player than Clark---is multiplying by just `r mod_attend_coefs |> filter(term == "is_aw") |> pull(estimate) |> min() |> exp() |> round(2)`.
 
+Among the control variables, median income and metro area population had small negative effects after controlling for other variables. 
+
+@fig-attend-coefs presents the results of @tbl-coefs and some additional coefficients graphically.
+Confidence intervals for the coefficient associated with the Golden State Valkyries is omitted because it was so large that it renders all of the other effects indistinguishable. 
+The New York Liberty have the largest team effect, and all teams are positive relative to the Dream. 
+Saturday games have the highest attendance, as do games later in the season. 
 
 ```{r}
 #| label: fig-attend-coefs
-#| fig-cap: "Relative magnitudes of coefficients in attendance model. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
+#| fig-cap: "Relative magnitudes of fitted coefficients in attendance model, with 95% confidence intervals. The coefficient for the Golden State Valkyries is omitted. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
 plot_attend_coefs <- mod_attend_coefs |>
-  filter_out(str_detect(term, "(arena)|:|Intercept|median|metro|Golden")) |>
+  filter_out(str_detect(term, "(arena)|:|Intercept|median|metro|season|Golden")) |>
   mutate(
-    hilite = str_detect(term, "is_cc|2025|uncertain")
+    hilite = str_detect(term, "is_cc|2025|quality"),
+    term = sanitize_terms(term)
   ) |>
-  ggplot(aes(x = estimate, y = term, color = hilite)) +
-  geom_vline(xintercept = 0, linetype = 3) +
+  ggplot(aes(x = exp(estimate), y = term, color = hilite)) +
+  geom_vline(xintercept = 1, linetype = 3) +
   geom_point() +
-  geom_errorbar(aes(xmin = conf.low, xmax = conf.high), width = 0.1) +
-  scale_x_continuous("Coefficient in Regression Model") +
+  geom_errorbar(aes(xmin = exp(conf.low), xmax = exp(conf.high)), width = 0.1) +
+  scale_x_continuous(latex2exp::TeX(r"(Exponentiated Fitted Coefficient ($\exp{(\hat{\beta}_i)}$))")) +
+  scale_y_discrete("Term or factor level") +
   scale_color_discrete(guide = "none")
 plot_attend_coefs
 ```
-
-@tbl-glance characterizes the model's fit. 
-Our model explains $70.2%$ of the variance in game attendance, and the small difference between $r^2$ and $adj.r^2$ suggests that the complexity of our model is justified.
 
 
 ```{r}
@@ -810,15 +793,15 @@ glance.vglm <- function(x, ...) {
 }
 ```
 
+@tbl-glance characterizes the model's fit. 
 
-```{r}
-#| label: tbl-glance
-#| tbl-cap: "Model fit"
-mod_attend |>
-  broom::glance() |>
-  bind_rows(.id = "model") |>
-  knitr::kable(digits = 3)
-```
+#### Annual effects {#sec-annual}
+
+@tbl-lrt shows a likelihood ratio test between our model and a reduced model that does not include the interaction terms. 
+The interactions introduce 78 additional terms corresponding to season specific slopes to our model. 
+The likelihood ratio test rejects the null hypothesis that all season-specific changes in slope are equal to zero, indicating that the effects of our fan engagement measures differ significantly across seasons. 
+
+The ANOVA tables shown in @tbl-anova-tobit further support the inclusion of all three sets of interaction terms. 
 
 ```{r}
 #| label: tbl-lrt
@@ -827,86 +810,93 @@ anova(mod_tobit_basic, mod_tobit, type = "I") |>
   knitr::kable(digits = 3)
 ```
 
-@tbl-anova compares a model fit with constant slope coefficients to our model which allows each effect to vary by season. The interactions introduce 78 additional terms corresponding to season specific slopes to our model. The nested F-test rejects the null hypothesis that season-specific interactions are equal to zero, indicating that the effects of our fan engagement measures differ significantly across seasons. 
-
-#### Annual effects {#sec-annual}
-
-@fig-season-coefs shows that after controlling for the Caitlin Clark effect, expected attendance is only just returning its 1997 baseline in the most recent season. 
-This is a mixed blessing. 
-On the one hand, even after controlling for Clark, league expected attendance has fully recovered from the COVID-19 pandemic and the malaise of the early 2000s and 2010s. 
-On the other hand, it seems unlikely that the league would have achieved record high attendance without Clark.  
+@fig-season-coefs isolates the changes intercept associated with each WNBA season. 
+These reveal that even after controlling for our others variables---including the Caitlin Clark effect---expected attendance has exceeded its 1997 baseline in the most recent seasons. 
+Thus, after controlling for the influence of Clark and Wilson, league expected attendance has fully recovered from the COVID-19 pandemic and the malaise of the early 2000s and 2010s. 
 
 ```{r}
 #| label: fig-season-coefs
-#| fig-cap: "Estimated season-level fixed effects for natural logarithm of attendance models. "
+#| fig-cap: "Estimated season-level fixed effects for Tobit attendance model. "
 plot_attend_seasons <- mod_attend_coefs |>
   filter(str_detect(term, "season_id")) |>
   filter_out(str_detect(term, ":")) |>
   mutate(season_id = parse_number(str_sub(term, -4))) |>
-  ggplot(aes(x = season_id, y = estimate)) +
-  geom_hline(yintercept = 0, linetype = 3) +
+  bind_rows(tibble(season_id = 1997, estimate = 0)) |>
+  ggplot(aes(x = season_id, y = exp(estimate))) +
+  geom_point() +
+  geom_hline(yintercept = 1, linetype = 3) +
   geom_line() +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
+  geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
   scale_x_continuous("Season") +
-  scale_y_continuous("Estimated Season Fixed Effect") +
+  scale_y_continuous("Exponentiated Fitted Season Fixed Effect") +
   theme_minimal(base_size = 10)
 plot_attend_seasons
 ```
 
-@fig-season-slopes shows the season-by-season slopes on the interaction terms for our three hypotheses, relative to the 1997 reference season. Where the seasonal fixed effects convey broad attendance trends, the interaction term slopes identify trends in how fan behavior is driven by game outcomes. Where general attendance dropped off after the opening season, the extent to which fan behavior is influenced by game outcome seems to improve past the first season. In particular, the interaction coefficients on our loss aversion variable are positive and generally increasing, suggesting that the attendance response to home win probability has strengthened over the league's history. The importance of outcome uncertainty and quality of play on attendance appears to be weaker and not substantially improved in recent years.
+@fig-season-slopes shows the exponentiated season-by-season combined slopes for our three measures of fan engagement. 
+The initial values (corresponding to 1997), match those in @tbl-coefs, and the subsequent interaction terms modify the relationships between attendance and fan engagement. 
+In @fig-season-slopes, we can see that there is little to no association with attendance from the uncertainty of the outcome. 
+The slope associated with loss aversion always positive and generally increasing, suggesting that the attendance response to home win probability has strengthened over the league's history. 
+This suggests that fan behavior in the WNBA may becoming more similar to the behavior observed in MLB by @CoatesHumphreysZhou2014.
+
+::: {.callout-note title="Ben"}
+Say something about how this tracks with Agha and Berri. 
+:::
+
+Similarly, the slope associated with quality of play is always positive and generally increasing, following a steep fall after the league's first season. 
+
+::: {.callout-note title="Ben"}
+I'm not sure why the quality of play initial coefficient is so high and then drops off. 
+:::
+
+In the case of quality of play and loss aversion, the exponentiated fitted coefficient value of approximately 0.1 in recent years means that a one standard deviation increase in these measures is associated with an increase in attendance that is about 10% higher than it would have been in the league's early years. 
+This is another key finding. 
+
+```{r}
+#| label: combine-slopes
+combine_slopes <- function(data) {
+  slopes <- data |>
+    filter(str_detect(term, "z")) |>
+    mutate(
+      type = ifelse(str_detect(term, "\\)$"), "main", "interaction"),
+      season_id = parse_number(str_sub(term, -4)),
+      variable = str_extract(term, "z[0-9][a-z,_]+")
+    )
+  
+  main_slopes <- slopes |>
+    filter(type == "main") |>
+    mutate(season_id = 1997) |>
+    select(season_id, variable, estimate, conf.low, conf.high)
+  
+  changes_in_slopes <- slopes |>
+    filter(type == "interaction") |>
+    select(season_id, variable, estimate, conf.low, conf.high) |>
+    bind_rows(main_slopes)
+  
+  changes_in_slopes |>
+    left_join(
+      main_slopes |> select(variable, main_slope = estimate), 
+      by = join_by(variable)
+    ) |>
+    mutate(combined_slope = main_slope + estimate)
+}
+```
+
 
 ```{r}
 #| label: fig-season-slopes
-#| fig-cap: "Estimated season-level changes in slopes for natural logarithm of attendance models. "
+#| fig-cap: "Exponentiated fitted combined (main effect + interaction effect) slope coefficients for Tobit model, by season. "
 plot_attend_slopes <- mod_attend_coefs |>
-  filter(str_detect(term, ":")) |>
-  mutate(
-    season_id = parse_number(str_sub(term, -4)),
-    variable = str_extract(term, "z_.+:")
-  ) |>
-  ggplot(aes(x = season_id, y = estimate, color = variable)) +
-  geom_hline(yintercept = 0, linetype = 3) +
+  combine_slopes() |>
+  ggplot(aes(x = season_id, y = exp(combined_slope), color = variable)) +
+  geom_hline(yintercept = 1, linetype = 3) +
   geom_line() +
 #  geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
   geom_smooth(se = 0) +
   scale_x_continuous("Season") +
-  scale_y_continuous("Seasonal interaction coefficients (relative to 1997") +
+  scale_y_continuous("Exponentiated Fitted Combined Slope Coefficient") +
   theme_minimal(base_size = 10)
 plot_attend_slopes
-```
-
-```{r}
-#| label: fig-season-slopes-actual
-#| fig-cap: "Estimated season level slopes for attendance models"
-baseline <- tibble(
-  variable = c(
-    "I(z_loss_aversion)",
-    "I(z_quality_of_play)",
-    "I(z_uncertain_outcome)"
-  ),
-  baseline = c(
-    -0.081,
-    0.003,
-    -0.053
-  )
-)
-
-slopes_actual <- slopes |>
-  left_join(baseline, by = "variable") |>
-  mutate(slope = estimate + baseline)
-
-actual_slopes_plot <- slopes_actual |>
-ggplot(aes(x = season, y = slope, color = variable)) +
-  geom_hline(yintercept = 0, linetype = 3) +
-  geom_line() +
-#  geom_errorbar(aes(ymin = conf.low, ymax = conf.high, width = 0.2)) +
-  geom_smooth(se = 0) +
-  scale_x_continuous("Season") +
-  scale_y_continuous("Seasonal interaction coefficients") +
-  theme_minimal(base_size = 10)
-  
-actual_slopes_plot
-
 ```
 
 
@@ -952,12 +942,7 @@ mod_pct_coefs <- mod_pct |>
 
 mod_pct_coefs |>
   filter_out(str_detect(term, "factor|name")) |>  
-  mutate(
-#    term = ifelse(str_detect(term, "I\\("), paste0(model, ": fan engagment"), term),
-    term = ifelse(str_detect(term, "is_cc"), "P: Caitlin Clark", term),
-    term = ifelse(str_detect(term, "is_aw"), "P: A'ja Wilson", term),
-    term = str_to_title(str_replace_all(term, "_", " "))
-  ) |>
+  mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
   janitor::clean_names(case = "title") |>
   knitr::kable(digits = 3)
@@ -970,28 +955,21 @@ mod_pct_coefs |>
 #| fig-cap: "Relative magnitudes of coefficients in attendance model. Coefficients of interest are highlighted. Note the relatively large size of the coefficient associated with Caitlin Clark. "
 plot_attend_coefs +
   mod_pct_coefs |>
-  filter_out(str_detect(term, "(arena)|:|Intercept|median")) |>
+  filter_out(str_detect(term, "(arena)|:|Intercept|median|Golden|season")) |>
   mutate(
-    hilite = str_detect(term, "is_cc|2025|uncertain")
+    hilite = str_detect(term, "is_cc|2025|quality"),
+    term = sanitize_terms(term)
   )
 ```
 
 
-@tbl-glance2 shows the model fit metrics for the percentage of arena capacity models. 
-
-```{r}
-#| label: tbl-glance2
-#| tbl-cap: "Comparison of percentage of arena capacity models."
-mod_pct |>
-  broom::glance() |>
-  knitr::kable()
-```
-
-@tbl-anova2 shows the analysis of variance for the percentage of arena capacity models. 
+@tbl-glance2 and @tbl-anova2 show model fit metrics and analysis of variance for the percentage of estimated arena capacity models, respectively. 
 
 #### Annual effects
 
-@fig-season-coefs2 displays the estimated effects of our fan engagement measures on attendance relative to the 1997 reference season. Similar to the overall attendance trends, these effects generally remained below their 1997 levels for much of the league's history and only returned to comparable levels recently. In the most recent years of measurement, however, we see the league exceeding previously record-holding levels.
+@fig-season-coefs2 displays the estimated effects of our fan engagement measures on attendance relative to the 1997 reference season. 
+Similar to the overall attendance trends, these effects generally remained below their 1997 levels for much of the league's history and only returned to comparable levels recently. 
+In the most recent years of measurement, however, we see the league exceeding previously record-holding levels.
 
 ```{r}
 #| label: fig-season-coefs2
@@ -1000,7 +978,8 @@ plot_attend_seasons +
   mod_pct_coefs |>
   filter(str_detect(term, "season_id")) |>
   filter_out(str_detect(term, ":")) |>
-  mutate(season_id = parse_number(str_sub(term, -4)))
+  mutate(season_id = parse_number(str_sub(term, -4))) |>
+  bind_rows(tibble(season_id = 1997, estimate = 0))
 ```
 
 @fig-season-slopes2 shows that...??
@@ -1010,11 +989,7 @@ plot_attend_seasons +
 #| fig-cap: "Estimated season-level changes in slopes for percentage of arena capacity models. "
 plot_attend_slopes +
   mod_pct_coefs |>
-  filter(str_detect(term, ":")) |>
-  mutate(
-    season_id = parse_number(str_sub(term, -4)),
-    variable = str_extract(term, "z_.+:")
-  ) 
+  combine_slopes()
 ```
 
 ## Conclusion
@@ -1096,12 +1071,20 @@ plot_capacity +
   scale_x_continuous("Normalized Uncertainty of Outcome")
 ```
 
+### Model fitting metrics for attendance model {#sec-fit-tobit}
 
-
-### ANOVA tables
+```{r}
+#| label: tbl-glance
+#| tbl-cap: "Model fit"
+mod_attend |>
+  broom::glance() |>
+  bind_rows(.id = "model") |>
+  knitr::kable(digits = 3)
+```
 
 
 ```{r}
+#| label: tbl-anova-tobit
 #| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
 #| eval: false
 mod_attend |>
@@ -1110,6 +1093,17 @@ mod_attend |>
   knitr::kable(digits = 3)
 ```
 
+
+
+### Model fitting metrics for percentage of arena capacity model {#sec-fit-papke}
+
+```{r}
+#| label: tbl-glance2
+#| tbl-cap: "Comparison of percentage of arena capacity models."
+mod_pct |>
+  broom::glance() |>
+  knitr::kable()
+```
 
 ```{r}
 #| label: tbl-anova2
