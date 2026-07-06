@@ -12,7 +12,9 @@ format:
     toc: true
     comments:
       hypothesis: true
-  pdf: default
+  pdf:
+    notebook-links: false
+    keep-tex: true
   docx: default
 
 

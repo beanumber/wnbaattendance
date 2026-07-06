@@ -11,12 +11,12 @@ wnba_attendance <- read_rds(here::here("data/wnba_attendance.rds"))
 cbsas <- read_rds(here::here("data/cbsas.rds"))
 
 wnba_attendance <- wnba_attendance |>
-  left_join(cbsas, by = join_by(cbsa_id == GEOID))
+  left_join(cbsas, by = join_by(season == year, cbsa_id == GEOID))
 
 wnba_gl <- wnba_gl_elo |>
   left_join(
     wnba_attendance |>
-      select(game_date, team, attendance, arena, arena_capacity, cbsa_id, median_income, median_pop), 
+      select(game_date, team, attendance, arena = arena_consolidated, arena_capacity, cbsa_id, median_income, total_pop), 
     by = join_by(game_date, team_name == team)
   )
 
