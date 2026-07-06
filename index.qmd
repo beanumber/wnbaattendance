@@ -320,7 +320,7 @@ plot_attend_eda +
   scale_y_log10()
 ```
 
-### Arena capacity
+### Arena capacity {#sec-arenas}
 
 While we recorded reported arena capacities, those capacities were difficult to obtain for venues not in current use, they change over time, and some games had attendance that exceeded the arena's reported capacity. 
 Thus, we estimate each arena's capacity as the larger of the reported capacity, or the maximum recorded attendance at that arena in the sample. 
@@ -600,10 +600,6 @@ mod_ols_basic <- lm(formula = form_basic, data = wnba_df)
 mod_ols <- lm(formula = form_interaction, data = wnba_df)
 ```
 
-
-Because the raw attendance figures are not normally distributed, we model the logarithm of attendance. 
-Similarly, because the percentage of arena capacity are bound above by 1 and below by 0, we employ a Tobit regression model. 
-
 Like @CoatesHumphreysZhou2014, we model the natural logarithm of attendance. 
 
 Our general regression model for attendance is:
@@ -638,13 +634,22 @@ mod_tobit <- vglm(
 )
 ```
 
-::: {.callout-note title="Ben"}
-Need to add details about Tobit modeling. 
-:::
+Also like @CoatesHumphreysZhou2014, we employ a Tobit model [@tobin1958estimation], because the observed attendance is censored by the arena's capacity. 
+This means that what we are modeling is an unobserved, latent potential attendance, that may or may not exceed the arena's capacity. 
+In this Tobit model, we have:
+
+$$
+  \mathbb{E}(\ln{y}) = \begin{cases} y^*_k & \text{if } \symbf{X} \symbf{\beta} > 0.92 \cdot y^*_k \,, \\
+                         \symbf{X} \symbf{\beta} & \text{if } \symbf{X} \symbf{\beta} \leq 0.92 \cdot y^*_k
+                         \end{cases} \,,
+$$
+where $y^*_k$ is the estimated capacity of arena $k$, as described in @sec-arenas. 
 
 We fit the Tobit model in R using the `vglm()` and `tobit()` functions from the `r pkg("VGAM")` package. 
 
 ### Model formulation for percentage of arena capacity {#sec-mod-cap}
+
+Similarly, because the percentage of arena capacity are bound above by 1 and below by 0, we employ a Tobit regression model. 
 
 We fit the same model with $\gamma$ as the response, but because our response variable $\gamma$ is constrained between 0 and 1 and has significant mass at 1 exactly, we use the Papke-Wooldridge fractional response model [@papke1996econometric].
 This is equivalent to fitting a generalized linear model with a logit link function and applying HC1 sandwich estimators [@mackinnon1985some] for the covariance matrix, which we accomplish using the `r pkg("sandwich")` package in R. 
@@ -692,7 +697,7 @@ tidy.vglm <- broom.helpers::tidy_vgam
 
 #### Baseline effects
 
-@tbl-coefs reports estimates from the Tobit model. 
+@tbl-coefs reports estimates from the Tobit model [@tobin1958estimation]. 
 Because each measure of fan engagement interacts with season, the reported coefficients for quality of play, outcome uncertainty, and loss aversion represent their estimated effects for the reference levels: a home game for the Atlanta Dream taking place on a Sunday in May (in which neither Clark nor Wilson is playing).
 The interaction terms, discussed in @sec-annual, capture how these relationships evolve over time. 
 
@@ -843,10 +848,8 @@ Say something about how this tracks with Agha and Berri.
 :::
 
 Similarly, the slope associated with quality of play is always positive and generally increasing, following a steep fall after the league's first season. 
-
-::: {.callout-note title="Ben"}
-I'm not sure why the quality of play initial coefficient is so high and then drops off. 
-:::
+One possible explanation for the anomolously large fitted slope in 1997 is that a few very good and/or very bad teams stood out in the first year in the league. 
+Another plausible explanation is that since all teams started with an initial Elo rating of 1500, it took a while for the relationship between attendance and team strength to settle down. 
 
 In the case of quality of play and loss aversion, the exponentiated fitted coefficient value of approximately 0.1 in recent years means that a one standard deviation increase in these measures is associated with an increase in attendance that is about 10% higher than it would have been in the league's early years. 
 This is another key finding. 
