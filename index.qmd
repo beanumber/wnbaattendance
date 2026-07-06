@@ -145,11 +145,7 @@ Specifically, we focus on whether on-court factors are becoming more important t
 ### Existing scholarship on team performance and game attendance
 
 A key line of research in sports economics links fan demand to expectations about game outcomes. 
-Early work such as the uncertainty-of-outcome hypothesis suggests that attendance is higher when game results are less predictable, increasing perceived excitement. 
-
-::: {.callout-note title="Ben"}
-We need a citation for the Uncertainty of Outcome Hypothesis
-:::
+Early work such as the uncertainty-of-outcome hypothesis suggests that attendance is higher when game results are less predictable, increasing perceived excitement [@rottenberg1956baseball; @neale1964peculiar]. 
 
 @CoatesHumphreysZhou2014 use more recent behavioral economics models to suggest that people evaluate gains and losses relative to a reference point and tend to dislike losses more than they like equivalent wins. 
 They argue that applying this idea of loss aversion may better explain why fans choose to go games than the uncertainty of outcome hypothesis. 
@@ -166,11 +162,6 @@ Differences in the literature over how to measure team quality (wins, wins lagge
 
 The relationship between attendance and winning percentage has been examined, but such
 studies often look at winning percentage as causation for attendance. 
-
-::: {.callout-note title="Ben"}
-Winning percentage *is* a measure of team strength. So how is this different than what we're saying above? 
-:::
-
 @davis2008interaction and @horowitz2007if both found that attendance and winning percentage were related. 
 Horowitz concluded a bidirectional relationship between the two, while Davis suggested that causation runs from winning percentage to attendance. 
 In a following study, @davis2009analyzing found winning percentage as a significant determinant of attendance for 12 National League teams; though the study did not establish causation both ways. 
@@ -180,14 +171,7 @@ There is evidence that causation may run from attendance to winning percentage, 
 ::: {.callout-note title="Ben"}
 What evidence? We should cite something if there is evidence. 
 
-Also, really? Attedance causes winning percentage to rise???
-:::
-
-	
-Finally, situating these revenue models within the broader league structure, sports economists have written extensively about the relationship between winningness and team revenue, particularly about how competitive balance benefits teams across the league in generating revenue. 
-
-::: {.callout-note title="Ben"}
-What revenue models??
+Also, really? Attendance causes winning percentage to rise???
 :::
 
 While teams and fans want to win as many games as possible, significant imbalance in winning percentages across a professional sports league will tend to decrease viewership as spectators will only watch a game if they have some uncertainty about the outcome [@PerlineNobleStoldt2018]. 
@@ -253,6 +237,15 @@ While many other variables are omitted from the table, we note that the attendan
 #| label: tbl-attendance
 #| fig-cap: "Sample of Game-level WNBA data. The data indicates (among other things) which teams were playing, who won, the arena, the attendance, and whether Caitlin Clark and/or A'ja Wilson played in the game."
 
+my_gt <- function(x) {
+  x |>
+    gt() |>
+    tab_options(
+      table.font.size = px(11),
+      table.width = pct(100)
+    )
+}
+
 wnba_gl |>
   select(
     game_date,
@@ -265,8 +258,9 @@ wnba_gl |>
     wilson = is_aw
   ) |>
   slice_sample(n = 10) |>
+  mutate(game_date = as.character(game_date)) |>
   janitor::clean_names(case = "title") |>
-  gt() |>
+  my_gt() |>
   tab_header(
     title = "WNBA Game Data (1997-2025)",
     subtitle = "Sample of game-level records"
@@ -274,10 +268,6 @@ wnba_gl |>
   fmt_number(
     columns = Attendance,
     decimals = 0
-  ) |>
-  tab_options(
-    table.font.size = px(11),
-    table.width = pct(100)
   )
 ```
 
@@ -418,7 +408,7 @@ wnba_gl |>
   ) |>
   mutate(diff = obs_home_wpct - bin_midpoint) |>
   janitor::clean_names(case = "title") |>
-  gt() |>
+  my_gt() |>
   tab_header(
     title = "WNBA Home Win Probability Model Calibration (1997-2025)",
     subtitle = "10 Equally-spaced Bins"
@@ -426,12 +416,7 @@ wnba_gl |>
   fmt_number(
     decimals = 3
   ) |>
-  fmt_number(columns = Games, decimals = 0) |>
-  tab_options(
-    table.font.size = px(11),
-    table.width = pct(100)
-  )
-
+  fmt_number(columns = Games, decimals = 0)
 ```
 
 
@@ -520,7 +505,9 @@ wnba_gl |>
     avg_capacity = avg_attendance / max_attendance
   ) |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = c(0, 0, 0, 0, 1, 0, 2, 2))
+  my_gt() |>
+  fmt_number(columns = `Avg Attendance`, decimals = 1) |>
+  fmt_number(columns = c(`Pct Sellouts`, `Avg Capacity`), decimals = 3)
 ```
 
 
@@ -550,7 +537,9 @@ wnba_gl |>
   select(matches("^z[0-9]_")) |>
   cor() |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
+  as_tibble() |>
+  my_gt() |>
+  fmt_number(decimals = 3)
 ```
 
 @fig-all-z illustrates how our normalized measures of fan engagement vary with respect to the estimated (pregame) strength of the home and away teams. 
@@ -743,7 +732,8 @@ mod_attend_coefs |>
   mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
+  my_gt() |>
+  fmt_number(decimals = 3)
 ```
 
 In the reference season, the evidence for loss aversion ($Z_3$) and uncertainty of outcome ($Z_2$) is weak, with those coefficients being of little significance, either practically or statistically. 
@@ -813,7 +803,8 @@ The ANOVA tables shown in @tbl-anova-tobit further support the inclusion of all 
 #| label: tbl-lrt
 #| tbl-cap: "Model comparison: constant vs season-varying effects of fan engagement on attendance."
 anova(mod_tobit_basic, mod_tobit, type = "I") |>
-  knitr::kable(digits = 3)
+  my_gt() |>
+  fmt_number(columns = `Pr(>Chi)`, decimals = 3)
 ```
 
 @fig-season-coefs isolates the changes intercept associated with each WNBA season. 
@@ -951,7 +942,8 @@ mod_pct_coefs |>
   mutate(term = sanitize_terms(term)) |>
   arrange(term) |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
+  my_gt() |>
+  fmt_number(decimals = 3)
 ```
 
 @fig-pct-coefs shows that...
@@ -1008,8 +1000,14 @@ We also considered fitting a Beta regression model with a logit link function, a
 We also considered fitting a period-based model but ultimately decided against this approach. 
 Defining periods by hand would require subjective decisions about the timing of structural breaks and would risk introducing researcher bias into the analysis. 
 
+Uncertainty of outcome hyp
+
+No reason for rates to converge. 
 
 ### Future work
+
+Honeymoon effect on Caitlin Clark. 
+
 
 ### Discussion
 
@@ -1095,7 +1093,8 @@ mod_attend |>
 mod_attend |>
   anova() |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
+  my_gt() |>
+  fmt_number(columns = c(`X2 log Lik Diff`, `Log Lik`, `Pr Chi`), decimals = 3)
 ```
 
 ### Model fitting metrics for percentage of arena capacity model {#sec-fit-papke}
@@ -1116,6 +1115,7 @@ mod_pct |>
   broom::tidy() |>
   filter_out(str_detect(term, "NULL")) |>
   janitor::clean_names(case = "title") |>
-  knitr::kable(digits = 3)
+  my_gt() |>
+  fmt_number(columns = c(`Deviance`, `Residual Deviance`, `P Value`), decimals = 3)
 ```
 
