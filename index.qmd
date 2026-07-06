@@ -292,7 +292,7 @@ attend_pct_increase <- 100 * (attend_hi / attend_prev_hi - 1)
 
 Several broad observations can be made from @fig-boxplots. 
 First, after some initial enthusiasm during the first three years of the league, attendance largely plateaued or steadily but slightly declined from 2000 to 2017. 
-[Note that @AghaBerri2023 used only data through 2017.] 
+(Note that @AghaBerri2023 used only data through 2017.) 
 The two years preceding the pandemic (2018-2019) had notably lower attendance. 
 However, since the pandemic, attendance has rebounded, exceeding its initial levels in 2024 and reaching new heights in 2025. 
 In fact, average WNBA attendance in 2025 was `r format(round(attend_hi), scientific = FALSE, big.mark = ",")`, which was `r round(attend_pct_increase, 1)`% higher than the previous high in 1998. 
@@ -532,7 +532,7 @@ We note that @tbl-cor shows that our three fan engagement variables are largely 
 
 ```{r}
 #| label: tbl-cor
-#| tbl-cap: "Correlations among normalized fan engagment variables. "
+#| tbl-cap: "Correlations among normalized fan engagement variables. "
 wnba_gl |>
   select(matches("^z[0-9]_")) |>
   cor() |>
@@ -549,7 +549,7 @@ Although this metric is not used directly in our analysis, it might be considere
 
 ```{r}
 #| label: fig-all-z
-#| fig-cap: "Distribution of normalized fan engagment measures as a function of home and away pregrame Elo ratings. The lack of correlation across these measures is obvious. The 4th panel shows the simple sum of all three measures. "
+#| fig-cap: "Distribution of normalized fan engagement measures as a function of home and away pregame Elo ratings. The lack of correlation across these measures is obvious. The 4th panel shows the simple sum of all three measures. "
 wnba_gl |>
   select(contains("pregame"), matches("^z")) |>
   pivot_longer(cols = !contains("pregame"), names_to = "variable", values_to = "value") |>
@@ -569,7 +569,7 @@ As time-related control variables, we include the the season ($\tau_1$), the mon
 To control for city-related effects, we also include the team name ($\phi_1$), as well as the metropolitan area median income ($\phi_2$, in thousands of USD) and population ($\phi_3$, in millions) of the home city[^median].
 Finally, we include an indicator based on whether Caitlin Clark or A'ja Wilson played more than 0 minutes in the game ($\chi_1, \chi_2$, respectively). 
 
-[^median]: The data for the population and the median income of cities comes from the American Community Survey, access to which was provided in R by the `r pkg("tidycensus")` package. Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), impute missing values using a cubic spline for interpolated values and the last observation carried forward (or backward) for extraploted values.  
+[^median]: The data for the population and the median income of cities comes from the American Community Survey, access to which was provided in R by the `r pkg("tidycensus")` package. Because the population and median income statistics were available at irregular time periods (due to the COVID-19 pandemic and other factors), impute missing values using a cubic spline for interpolated values and the last observation carried forward (or backward) for extrapolated values.  
 
 ### Interaction
 
