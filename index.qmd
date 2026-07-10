@@ -154,10 +154,11 @@ These frameworks together suggest that attendance decisions are sensitive not on
 
 In the first study in sports economics that sought to empirically identify the factors that affected attendance, @noll1974attendance considered data from MLB, the NFL, NHL, NBA and ABA (American Basketball Association) for the 1969-70 and 1970-71 seasons and found that demand was a function of population, interactions of income with star players, team win percentage, and per capita income. 
 Multiple subsequent studies on men’s professional team sports continued to find a statistically significant correlation between team quality and attendance.
-Differences in the literature over how to measure team quality (wins, wins lagged, number of championships in past years, win probability, star power), attendance (logs, lags, linear regression or censored), the inclusion of control variables and non-linear forms also emerged [@wiseman2003team; @woltring2018attendance; @kim2023winning; @deschriver2002determinants; @paul2019attendance].
+Differences in the literature over how to measure team quality (wins, wins lagged, number of championships in past years, win probability, star power), attendance (logs, lags, linear regression or censored), the inclusion of control variables and nonlinear forms also emerged [@wiseman2003team; @woltring2018attendance; @kim2023winning; @deschriver2002determinants; @paul2019attendance].
 
 Studies of attendance and winning percentage often consider the latter as causing the former. 
-@davis2008interaction and @horowitz2007if both found that attendance and winning percentage were related. Horowitz concluded a bidirectional relationship between the two, while Davis suggested that causation runs from winning percentage to attendance. 
+@davis2008interaction and @horowitz2007if both found that attendance and winning percentage were related. 
+Horowitz concluded a bidirectional relationship between the two, while Davis suggested that causation runs from winning percentage to attendance. 
 In a following study, @davis2009analyzing found winning percentage as a significant determinant of attendance for 12 National League teams. 
 The study did not establish causation both ways. 
 @lemke2010estimating found attendance increases as home team win probability increases. 
