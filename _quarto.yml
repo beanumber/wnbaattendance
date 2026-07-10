@@ -16,6 +16,7 @@ format:
     notebook-links: false
     keep-tex: true
   docx: 
+    notebook-links: false
     footnotes-to-endnotes: true
 
 
