@@ -988,6 +988,7 @@ Although interest in a single star player is not, by itself, evidence of sustain
  
 Secondly, as has been widely reported, attendance has reached new heights in recent years even after controlling for Clark's presence and other game, team, and market characteristics. 
 This means that the league's recent success cannot be attributed only to the "Caitlin Clark effect" and instead indicates a broader increase in demand.
+The Golden State Valkyries filled all 18,064 seats in each one of their 22 home games in 2025, only one of which involved Clark. 
 
 Finally, we find evidence that the relationship between quality of play and attendance has strengthened over time. 
 Both the home team's win probability and the combined strength of the two teams in a match up are significant predictors of attendance, and their effects have grown stronger in recent seasons. 
