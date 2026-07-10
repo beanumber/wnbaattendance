@@ -5,32 +5,44 @@ author:
     corresponding: true
     email: geastwood@smith.edu
     affiliations:
+      - ref: chicago
       - ref: smith
   - name: 
       given: Benjamin S. 
       family: Baumer
     orcid: 0000-0002-3279-0516
-    affiliation:
-      - id: smith
-        name: Smith College
-        department: Statistical & Data Sciences
-        address: 44 College Lane
-        city: Northampton, MA
-        country: United States of America
-        postal-code: 01063
-        url: https://www.smith.edu/
-        isni: 0000000119314868
     email: bbaumer@smith.edu
     url: https://www.smith.edu/people/ben-baumer
     corresponding: false
+    affiliation:
+      - ref: smith
   - name: 
       given: Andrew 
       family: Zimbalist
     affiliation:
       - ref: smith
+      - department: Economics
     email: azimbali@smith.edu
     url: https://www.smith.edu/people/andrew-zimbalist
     corresponding: false
+affiliations:
+  - id: smith
+    name: Smith College
+    department: Statistical & Data Sciences
+    address: 44 College Lane
+    city: Northampton, MA
+    country: United States of America
+    postal-code: 01063
+    url: https://www.smith.edu/
+    isni: 0000000119314868
+  - id: chicago
+    name: University of Chicago
+    department: Harris School of Public Policy
+    address: 1307 E. 60th Street
+    city: Chicago, IL
+    postal-code: 60637
+    country: United States of America
+    url: https://harris.uchicago.edu/
 
 
 keywords:
@@ -162,6 +174,7 @@ Horowitz concluded a bidirectional relationship between the two, while Davis sug
 In a following study, @davis2009analyzing found winning percentage as a significant determinant of attendance for 12 National League teams. 
 The study did not establish causation both ways. 
 @lemke2010estimating found attendance increases as home team win probability increases. 
+The bulk, but not all, of the literature has found that the causal direction runs from winning percentage to attendance [@hall2002testing].
 
 While teams and fans want to win as many games as possible, significant imbalance in winning percentages across a professional sports league will tend to decrease viewership as spectators will only watch a game if they have some uncertainty about the outcome [@PerlineNobleStoldt2018]. 
 In NCAA basketball, @PerlineNobleStoldt2018 examine the standard deviation and the range of winning percentages for teams in the women’s Division I and determine that the women’s game is significantly less balanced than the men’s game. 
@@ -206,7 +219,7 @@ Specifically, we find that in recent years the strength of the effect of a game'
 Our analysis is based on game-level data that spans WNBA history, beginning in 1997 and continuing through the end of the 2025 season. 
 Our final data set contains observations from `r format(nrow(wnba_gl), big.mark = ",")` games.
 
-First, we collected game-level attendance data from [@AcrossTheTimeline], an online repository for women's basketball data that collects attendance numbers directly from the league's records[^attendance]. 
+First, we collected game-level attendance data from an online repository for women's basketball data that collects attendance numbers[^attendance] directly from the league's records [@AcrossTheTimeline]. 
 Attendance data was unavailable for only `r nrow(filter(wnba_gl, is.na(attendance)))` games, while (due to the COVID-19 pandemic) `r nrow(filter(wnba_gl, attendance == 0))` games (accurately) recorded attendance of 0. 
 The arenas in which WNBA teams play vary widely in size.
 For example, the New York Liberty alone have called both the Barclays Center (17,732 seat capacity) and the Westchester County Center (2,300 seat capacity) home in recent years. 
@@ -990,8 +1003,9 @@ Secondly, as has been widely reported, attendance has reached new heights in rec
 This means that the league's recent success cannot be attributed only to the "Caitlin Clark effect" and instead indicates a broader increase in demand.
 The Golden State Valkyries filled all 18,064 seats in each one of their 22 home games in 2025, only one of which involved Clark. 
 
-Finally, we find evidence that the relationship between quality of play and attendance has strengthened over time. 
-Both the home team's win probability and the combined strength of the two teams in a match up are significant predictors of attendance, and their effects have grown stronger in recent seasons. 
+Finally, we find evidence that the relationships between attendance and our measurements of both quality of play and loss aversion have strengthened over time. 
+The effect of quality of play appears to be more robust than the effect of our measurements of either loss aversion or uncertainty of outcome. 
+
 These findings suggest that the WNBA is entering a more mature stage of development, in which fans increasingly attend games for the product on the court rather than primarily out of novelty or support for women's sports.
 
 ### Limitations and future work
@@ -1006,9 +1020,11 @@ In particular, our definition of the uncertainty of outcome is maximized when th
 
 There is no theoretical explanation for why the slopes in @fig-season-slopes2 should converge. 
 
-With just two seasons in our data set, while Clark's impact on attendance is undeniable, only time will tell if this impact is persistent. 
+With just two seasons in our data set, while Clark's impact on attendance is undeniable, only time will tell if this impact is persistent.[^nba] 
 It may very well be the case that as Clark's novelty wears off, her effect on attendance wanes. 
 A follow-up study could investigate this possibility. 
+
+[^nba]: The excitement that Clark has brought to the WNBA may be reminiscent of the infusion of interest in the NBA that occurred in the early to mid 1980s with the arrival of Magic Johnson, Larry Bird, and Michael Jordan. 
 
 Finally, while we chose to focus on live, in-person game attendance, fan engagement with games on television and streaming also provide important insight into league health and development. 
 Future research might investigate what drives fans' engagement with games from their own homes, where the lower cost of engagement might influence fan behavior.
@@ -1082,7 +1098,7 @@ plot_capacity +
 
 ```{r}
 #| label: tbl-glance
-#| tbl-cap: "Model fit"
+#| tbl-cap: "Model fit metrics for the Tobit model for attendance. "
 mod_attend |>
   broom::glance() |>
   bind_rows(.id = "model") |>
@@ -1094,7 +1110,7 @@ mod_attend |>
 #| label: tbl-anova-tobit
 #| tbl-cap: "Analysis of variance for terms in models for the natural logarithm of attendance. "
 mod_attend |>
-  anova() |>
+  anova() |> as_tibble(rownames = "term") |>
   janitor::clean_names(case = "title") |>
   my_gt() |>
   fmt_number(columns = c(`X2 log Lik Diff`, `Log Lik`, `Pr Chi`), decimals = 3)
@@ -1104,7 +1120,7 @@ mod_attend |>
 
 ```{r}
 #| label: tbl-glance2
-#| tbl-cap: "Comparison of percentage of arena capacity models."
+#| tbl-cap: "Model fit metrics for the percentage of arena capacity model."
 mod_pct |>
   broom::glance() |>
   knitr::kable()

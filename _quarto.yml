@@ -15,7 +15,8 @@ format:
   pdf:
     notebook-links: false
     keep-tex: true
-  docx: default
+  docx: 
+    footnotes-to-endnotes: true
 
 
 
